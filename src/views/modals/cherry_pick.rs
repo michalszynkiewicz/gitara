@@ -102,21 +102,7 @@ fn run_cherry_pick(st: &mut AppState) {
         return;
     }
 
-    let result = if no_commit {
-        std::process::Command::new("git")
-            .current_dir(&repo_path)
-            .args(["cherry-pick", "--no-commit", &oid])
-            .output()
-            .map_err(anyhow::Error::from)
-            .and_then(|o| {
-                if o.status.success() { Ok(()) } else {
-                    let err = String::from_utf8_lossy(&o.stderr).trim().to_string();
-                    anyhow::bail!(err)
-                }
-            })
-    } else {
-        git::ops::cherry_pick(&repo_path, &[&oid])
-    };
+    let result = git::ops::cherry_pick(&repo_path, &[&oid], no_commit);
 
     match result {
         Ok(()) => {

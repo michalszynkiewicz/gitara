@@ -199,4 +199,114 @@ mod tests {
         assert_eq!(rows[3].column, 0);
         assert!(rows[3].terminating.contains(&1u8));
     }
+
+    #[test]
+    fn empty_input_returns_empty() {
+        assert!(compute(&[]).is_empty());
+    }
+
+    #[test]
+    fn root_commit_marks_lane_ends_here() {
+        // a -> b (root). Only b has lane_ends_here.
+        let commits = vec![mk("a", &["b"]), mk("b", &[])];
+        let rows = compute(&commits);
+        assert!(!rows[0].lane_ends_here, "a has a parent — lane continues");
+        assert!(rows[1].lane_ends_here, "b is a root — lane ends here");
+    }
+
+    #[test]
+    fn branch_tip_marks_lane_starts_here() {
+        // The first commit in any lane should mark lane_starts_here.
+        // Linear: a -> b -> c. Only `a` is a tip.
+        let commits = vec![mk("a", &["b"]), mk("b", &["c"]), mk("c", &[])];
+        let rows = compute(&commits);
+        assert!(rows[0].lane_starts_here, "a is a branch tip");
+        assert!(!rows[1].lane_starts_here, "b's lane was claimed by a");
+        assert!(!rows[2].lane_starts_here, "c's lane was claimed by b");
+    }
+
+    #[test]
+    fn parallel_lanes_with_offscreen_parents_take_separate_columns() {
+        // Two tips whose parents are off-screen (not in the input).
+        // Neither lane vacates within the window, so they each hold a
+        // distinct column. Documents that lane reuse only happens once
+        // a column has actually become free.
+        let commits = vec![mk("a", &["b"]), mk("c", &["d"])];
+        let rows = compute(&commits);
+        assert_eq!(rows[0].column, 0);
+        assert_eq!(rows[1].column, 1);
+        assert!(rows[0].lane_starts_here);
+        assert!(rows[1].lane_starts_here);
+    }
+
+    #[test]
+    fn octopus_merge_assigns_extra_parent_per_extra_parent() {
+        // a (3-parent merge) -> b, c, d
+        let commits = vec![
+            mk("a", &["b", "c", "d"]),
+            mk("b", &[]),
+            mk("c", &[]),
+            mk("d", &[]),
+        ];
+        let rows = compute(&commits);
+        assert!(rows[0].is_merge);
+        // First parent reuses a's column (0); the other two get fresh
+        // columns. We don't pin the exact indices, just the count.
+        assert_eq!(rows[0].extra_parent_columns.len(), 2);
+        // At row b (col 0), c and d are still pending → both pass through.
+        assert_eq!(rows[1].column, 0);
+        let mut through = rows[1].through.clone();
+        through.sort();
+        assert_eq!(through, vec![1u8, 2u8]);
+    }
+
+    #[test]
+    fn vacated_lane_is_reused_by_later_independent_tip() {
+        // a merges b, c. Both b and c are roots, so cols 0 and 1 vacate.
+        // d is an independent root and should take the lowest free col (0).
+        let commits = vec![
+            mk("a", &["b", "c"]),
+            mk("b", &[]),
+            mk("c", &[]),
+            mk("d", &[]),
+        ];
+        let rows = compute(&commits);
+        assert_eq!(rows[3].column, 0, "d should reuse col 0 vacated by b");
+        assert!(rows[3].lane_starts_here);
+        assert!(rows[3].lane_ends_here);
+    }
+
+    #[test]
+    fn max_column_is_uniform_across_rows() {
+        // Octopus merge pushes max_column to 2; every row should report
+        // the same max so callers can size the gutter once.
+        let commits = vec![
+            mk("a", &["b", "c", "d"]),
+            mk("b", &[]),
+            mk("c", &[]),
+            mk("d", &[]),
+        ];
+        let rows = compute(&commits);
+        for r in &rows {
+            assert_eq!(r.max_column, 2);
+        }
+    }
+
+    #[test]
+    fn merge_collapse_marks_terminating_not_through() {
+        // a merges b, c — both b and c have parent d.
+        // At row d (the merge-base), col 1 (c's lane) terminates.
+        // It must appear in `terminating`, not in `through`.
+        let commits = vec![
+            mk("a", &["b", "c"]),
+            mk("b", &["d"]),
+            mk("c", &["d"]),
+            mk("d", &[]),
+        ];
+        let rows = compute(&commits);
+        let d_row = &rows[3];
+        assert!(d_row.terminating.contains(&1u8));
+        assert!(!d_row.through.contains(&1u8),
+            "a terminating column must not also be drawn as a through line");
+    }
 }

@@ -86,7 +86,9 @@ pub fn load_commits(
     // commits from different branches would appear in arbitrary order.
     let walker = repo
         .rev_walk(starts)
-        .sorting(gix::traverse::commit::simple::Sorting::ByCommitTimeNewestFirst)
+        .sorting(gix::revision::walk::Sorting::ByCommitTime(
+            gix::traverse::commit::simple::CommitTimeOrder::NewestFirst,
+        ))
         .all()
         .context("start rev walk")?;
 
@@ -186,12 +188,18 @@ mod split_message_tests {
 }
 
 fn extract_author(commit: &gix::Commit<'_>) -> (Author, OffsetDateTime) {
-    // gix exposes author via commit.author() returning a signature-like ref.
+    // gix exposes author via commit.author() returning a SignatureRef.
+    // In gix 0.83 the raw `time` field is a &BStr (lossless bytes);
+    // call `.time()` to parse it into a `gix_date::Time` whose
+    // `seconds` field we feed to `OffsetDateTime::from_unix_timestamp`.
     if let Ok(sig) = commit.author() {
         let name = sig.name.to_string();
         let email = sig.email.to_string();
-        let date = OffsetDateTime::from_unix_timestamp(sig.time.seconds)
-            .unwrap_or_else(|_| OffsetDateTime::now_utc());
+        let date = sig
+            .time()
+            .ok()
+            .and_then(|t| OffsetDateTime::from_unix_timestamp(t.seconds).ok())
+            .unwrap_or_else(OffsetDateTime::now_utc);
         (Author { name, email }, date)
     } else {
         (Author { name: "?".into(), email: "?".into() }, OffsetDateTime::now_utc())

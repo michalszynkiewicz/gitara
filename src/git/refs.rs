@@ -19,12 +19,12 @@ pub fn load_repo(path: &Path) -> anyhow::Result<RepoView> {
     // starting path — reflect that in state so write ops target the right
     // directory.
     let repo_path: std::path::PathBuf = repo
-        .work_dir()
+        .workdir()
         .map(|p| p.to_path_buf())
         .unwrap_or_else(|| path.to_path_buf());
 
     let name = repo
-        .work_dir()
+        .workdir()
         .and_then(|p| p.file_name())
         .and_then(|s| s.to_str())
         .map(|s| s.to_string())
@@ -74,7 +74,7 @@ fn local_branches(repo: &gix::Repository) -> anyhow::Result<Vec<Branch>> {
     for r in platform.local_branches()? {
         let mut r = match r { Ok(r) => r, Err(_) => continue };
         let short = r.name().shorten().to_string();
-        let tip = match r.peel_to_id_in_place() { Ok(id) => id.to_string(), Err(_) => continue };
+        let tip = match r.peel_to_id() { Ok(id) => id.to_string(), Err(_) => continue };
         // Upstream branch + ahead/behind: gix doesn't expose a one-liner for this,
         // and the config-based lookup is tricky. For now, no upstream info.
         out.push(Branch {
@@ -108,7 +108,7 @@ fn remotes(repo: &gix::Repository) -> anyhow::Result<Vec<Remote>> {
         let full = r.name().shorten().to_string(); // "origin/main"
         let Some((remote, _)) = full.split_once('/') else { continue };
         let remote = remote.to_string();
-        let oid = match r.peel_to_id_in_place() {
+        let oid = match r.peel_to_id() {
             Ok(id) => id.to_string(),
             Err(_) => continue,
         };
@@ -144,7 +144,7 @@ fn tags(repo: &gix::Repository) -> anyhow::Result<Vec<Tag>> {
     for r in platform.tags()? {
         let mut r = match r { Ok(r) => r, Err(_) => continue };
         let name = r.name().shorten().to_string();
-        let oid = match r.peel_to_id_in_place() { Ok(id) => id.to_string(), Err(_) => continue };
+        let oid = match r.peel_to_id() { Ok(id) => id.to_string(), Err(_) => continue };
         // Annotated-vs-lightweight and tag date: need to peel and inspect the tag object.
         // Keep it simple for first pass — mark as annotated=false, use now for date.
         out.push(Tag {

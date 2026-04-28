@@ -103,23 +103,7 @@ fn run_merge(st: &mut AppState) {
         return;
     }
 
-    // Quick shell-out: ops::merge doesn't take no_ff, so handle the flag here.
-    let result = if no_ff {
-        // Bypass the bare op for the no-ff variant.
-        std::process::Command::new("git")
-            .current_dir(&repo_path)
-            .args(["merge", "--no-ff", &branch])
-            .output()
-            .map_err(anyhow::Error::from)
-            .and_then(|o| {
-                if o.status.success() { Ok(()) } else {
-                    let err = String::from_utf8_lossy(&o.stderr).trim().to_string();
-                    anyhow::bail!(err)
-                }
-            })
-    } else {
-        git::ops::merge(&repo_path, &branch)
-    };
+    let result = git::ops::merge(&repo_path, &branch, no_ff);
 
     match result {
         Ok(()) => {

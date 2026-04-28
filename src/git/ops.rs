@@ -59,14 +59,20 @@ pub fn create_branch(
     if name.trim().is_empty() {
         anyhow::bail!("branch name is empty");
     }
-    let mut args: Vec<&str> = vec!["branch", name];
+    // `--end-of-options` (git 2.24+) tells git's argument parser that
+    // every following arg is positional, even if it starts with `-`.
+    // Without it a hostile branch / tag / ref name could be reinterpreted
+    // as a flag (CVE-2017-1000117 class).
+    let mut args: Vec<&str> = vec!["branch", "--end-of-options", name];
     if let Some(rev) = from {
         args.push(rev);
     }
     git(repo_path, &args)?;
     if checkout {
-        git(repo_path, &["checkout", name])?;
+        git(repo_path, &["checkout", "--end-of-options", name])?;
     }
+    // rev-parse arg is `refs/heads/<name>`, prefixed with literal text
+    // so the resolved arg never starts with `-` regardless of `name`.
     let oid = git(repo_path, &["rev-parse", &format!("refs/heads/{name}")])?;
     Ok(oid.trim().to_string())
 }
@@ -78,7 +84,7 @@ pub fn delete_branch(repo_path: &Path, name: &str, force: bool) -> anyhow::Resul
         anyhow::bail!("branch name is empty");
     }
     let flag = if force { "-D" } else { "-d" };
-    git(repo_path, &["branch", flag, name])?;
+    git(repo_path, &["branch", flag, "--end-of-options", name])?;
     Ok(())
 }
 
@@ -87,7 +93,7 @@ pub fn rename_branch(repo_path: &Path, old: &str, new: &str) -> anyhow::Result<(
     if old.trim().is_empty() || new.trim().is_empty() {
         anyhow::bail!("rename: empty name");
     }
-    git(repo_path, &["branch", "-m", old, new])?;
+    git(repo_path, &["branch", "-m", "--end-of-options", old, new])?;
     Ok(())
 }
 
@@ -96,7 +102,7 @@ pub fn remove_remote(repo_path: &Path, name: &str) -> anyhow::Result<()> {
     if name.trim().is_empty() {
         anyhow::bail!("remote name is empty");
     }
-    git(repo_path, &["remote", "remove", name])?;
+    git(repo_path, &["remote", "remove", "--end-of-options", name])?;
     Ok(())
 }
 
@@ -105,7 +111,7 @@ pub fn delete_tag(repo_path: &Path, name: &str) -> anyhow::Result<()> {
     if name.trim().is_empty() {
         anyhow::bail!("tag name is empty");
     }
-    git(repo_path, &["tag", "-d", name])?;
+    git(repo_path, &["tag", "-d", "--end-of-options", name])?;
     Ok(())
 }
 
@@ -128,6 +134,7 @@ pub fn create_tag(
         args.push("-m");
         args.push(message);
     }
+    args.push("--end-of-options");
     args.push(name);
     if let Some(rev) = oid {
         args.push(rev);
@@ -161,7 +168,7 @@ pub fn checkout(repo_path: &Path, refspec: &str) -> anyhow::Result<()> {
     if refspec.trim().is_empty() {
         anyhow::bail!("checkout target is empty");
     }
-    git(repo_path, &["checkout", refspec])?;
+    git(repo_path, &["checkout", "--end-of-options", refspec])?;
     Ok(())
 }
 
@@ -222,6 +229,7 @@ pub fn fetch(repo_path: &Path, remote: &str, prune: bool) -> anyhow::Result<()> 
     if prune {
         args.push("--prune");
     }
+    args.push("--end-of-options");
     if !remote.is_empty() {
         args.push(remote);
     }
@@ -239,6 +247,7 @@ pub fn push(
     if force_with_lease {
         args.push("--force-with-lease");
     }
+    args.push("--end-of-options");
     if !remote.is_empty() { args.push(remote); }
     if !branch.is_empty() { args.push(branch); }
     git(repo_path, &args)?;
@@ -250,13 +259,23 @@ pub fn pull(repo_path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn merge(repo_path: &Path, from: &str) -> anyhow::Result<()> {
-    git(repo_path, &["merge", from])?;
+/// `git merge [--no-ff] <from>`. Centralised so the
+/// `--end-of-options` separator (against argument-injection) stays in
+/// one place — modals call this rather than building their own
+/// `Command::args(...)`.
+pub fn merge(repo_path: &Path, from: &str, no_ff: bool) -> anyhow::Result<()> {
+    let mut args: Vec<&str> = vec!["merge"];
+    if no_ff {
+        args.push("--no-ff");
+    }
+    args.push("--end-of-options");
+    args.push(from);
+    git(repo_path, &args)?;
     Ok(())
 }
 
 pub fn rebase(repo_path: &Path, onto: &str) -> anyhow::Result<()> {
-    git(repo_path, &["rebase", onto])?;
+    git(repo_path, &["rebase", "--end-of-options", onto])?;
     Ok(())
 }
 
@@ -267,7 +286,11 @@ pub fn add_remote(repo_path: &Path, name: &str, url: &str) -> anyhow::Result<()>
     if url.trim().is_empty() {
         anyhow::bail!("remote URL is empty");
     }
-    git(repo_path, &["remote", "add", name, url])?;
+    // NOTE: `--end-of-options` only protects git's own arg parser. URLs
+    // like `-oProxyCommand=...` are still interpreted by the underlying
+    // transport (ssh/curl). The UI entry point is disabled in mod.rs
+    // until URL scheme allow-listing lands — see ISSUES.md.
+    git(repo_path, &["remote", "add", "--end-of-options", name, url])?;
     Ok(())
 }
 
@@ -281,15 +304,25 @@ pub fn reset(repo_path: &Path, oid: &str, mode: crate::app::ResetMode) -> anyhow
         crate::app::ResetMode::Mixed => "--mixed",
         crate::app::ResetMode::Hard  => "--hard",
     };
-    git(repo_path, &["reset", flag, oid])?;
+    git(repo_path, &["reset", flag, "--end-of-options", oid])?;
     Ok(())
 }
 
-pub fn cherry_pick(repo_path: &Path, oids: &[&str]) -> anyhow::Result<()> {
+/// `git cherry-pick [--no-commit] <oids>`. Centralised so the
+/// `--end-of-options` separator stays in one place.
+pub fn cherry_pick(
+    repo_path: &Path,
+    oids: &[&str],
+    no_commit: bool,
+) -> anyhow::Result<()> {
     if oids.is_empty() {
         return Ok(());
     }
     let mut args: Vec<&str> = vec!["cherry-pick"];
+    if no_commit {
+        args.push("--no-commit");
+    }
+    args.push("--end-of-options");
     args.extend_from_slice(oids);
     git(repo_path, &args)?;
     Ok(())
@@ -438,5 +471,46 @@ mod tests {
         seed_commits(&repo, &["a"]);
         let err = create_tag(&repo, "  ", None, "").unwrap_err();
         assert!(format!("{err:#}").contains("empty"));
+    }
+
+    /// Regression: a hostile branch / ref name starting with `-` must
+    /// be passed as a positional arg, not interpreted as a flag.
+    /// `--end-of-options` (after the subcommand) is the load-bearing
+    /// piece — without it `git checkout -fhostile` would parse as
+    /// `git checkout -f hostile`.
+    #[test]
+    fn checkout_dash_prefixed_ref_does_not_inject_a_flag() {
+        let repo = fixture("checkout_dash_arg");
+        seed_commits(&repo, &["a"]);
+        // `-fhostile` doesn't exist as a branch, so the checkout will
+        // fail. The point: the failure must come from "ref not found"
+        // (i.e. git treated the arg as a positional ref) rather than
+        // git silently accepting -f as a flag and trying to switch to
+        // a branch named `hostile`.
+        let err = checkout(&repo, "-fhostile").unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(
+            msg.contains("-fhostile") || msg.contains("did not match") || msg.contains("not a"),
+            "unexpected error (suggests the arg was interpreted as a flag): {msg}",
+        );
+    }
+
+    /// Same protection on the branch-creation path.
+    #[test]
+    fn create_branch_with_dash_prefix_is_not_treated_as_flag() {
+        let repo = fixture("branch_dash_arg");
+        seed_commits(&repo, &["a"]);
+        // git's check-ref-format will reject the name as invalid (it
+        // starts with `-`), but it must do so as a *ref name* check,
+        // not by silently consuming `-fhostile` as flags. Either an
+        // explicit "is not a valid branch name" error, or echoing the
+        // exact name in the error, proves the arg crossed the
+        // --end-of-options barrier as positional.
+        let err = create_branch(&repo, "-fhostile", None, false).unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(
+            msg.contains("-fhostile") || msg.contains("not a valid"),
+            "unexpected error (suggests the arg was interpreted as a flag): {msg}",
+        );
     }
 }

@@ -228,6 +228,10 @@ pub enum Modal {
     Rebase(RebaseModalState),
     Fetch(FetchModalState),
     Push(PushModalState),
+    // Kept variant + state struct so the modal code compiles, but
+    // never constructed — see ISSUES.md for the URL-validation gap
+    // that needs to land before re-enabling the UI entry.
+    #[allow(dead_code)]
     AddRemote(AddRemoteModalState),
     Branch(BranchModalState),
     Merge(MergeModalState),
@@ -381,7 +385,12 @@ impl AppState {
                 })),
                 "merge"       => Some(Modal::Merge(MergeModalState::default())),
                 "rebase"      => Some(Modal::Rebase(RebaseModalState::default())),
-                "add_remote"  => Some(Modal::AddRemote(AddRemoteModalState::default())),
+                // "add_remote" deliberately removed — see ISSUES.md.
+                // The current implementation passes user-supplied URLs
+                // positionally to `git remote add`, which lets a URL
+                // like `-oProxyCommand=...` execute on next fetch
+                // (CVE-2017-1000117 class). Disabled until the modal
+                // gains scheme-allow-list validation.
                 "cherry_pick" => Some(Modal::CherryPick(CherryPickModalState::default())),
                 "reset"       => Some(Modal::Reset(ResetModalState {
                     oid: selection.primary.clone().unwrap_or_default(),

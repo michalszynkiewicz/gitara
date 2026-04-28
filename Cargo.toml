@@ -20,28 +20,29 @@ fontique = "0.4"     # native font discovery (Core Text / DirectWrite / fontconf
 palette = "0.7"      # OKLCH → sRGB conversion
 
 # ── Git ───────────────────────────────────────────────────────────────
-gix = { version = "0.66", default-features = false, features = [
+gix = { version = "0.83", features = [
     "max-performance",
     "blocking-network-client",
     "revision",
     "blob-diff",
 ] }
-git2 = "0.19"        # writes, push/fetch with creds, merge, rebase
+# vendored-libgit2 statically links libgit2 from source so we don't
+# depend on the system having libgit2.so.1.9 at runtime — that broke
+# tests on this machine when bumping git2 0.19 → 0.20 since the
+# system libgit2 was older than what 0.20 expects.
+git2 = { version = "0.20", features = ["vendored-libgit2"] }
 
-# ── Diff / highlight ──────────────────────────────────────────────────
-similar = "2"
-syntect = { version = "5", default-features = false, features = [
-    "default-fancy",
-] }
-
-# ── Async + events ────────────────────────────────────────────────────
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
-notify = "6"         # file-watcher for dirty-tree status
+# Phase-1+ scaffolding (similar / syntect for inline diff highlighting,
+# tokio for async work, notify for filesystem watching, ignore + globset
+# for path-spec matching, thiserror for typed errors) was removed —
+# none of those features have actually shipped yet, the deps were
+# unused, and they pulled large transitive subtrees. Add them back
+# when the feature that needs them lands.
 
 # ── Persistence ───────────────────────────────────────────────────────
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-directories = "5"
+directories = "6"
 
 # ── Custom widgets ────────────────────────────────────────────────────
 # Transitive already, but we depend on them directly for our custom
@@ -54,14 +55,11 @@ smallvec  = "1"
 # Pure-Rust 2D vector rasterizer — used once at startup to render the
 # window-icon (taskbar/dock) from vector primitives. Keeps the icon
 # crisp at any DPI without bundling a PNG.
-tiny-skia = "0.11"
+tiny-skia = "0.12"
 anyhow = "1"
-thiserror = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 time = { version = "0.3", features = ["serde", "formatting", "macros"] }
-ignore = "0.4"
-globset = "0.4"
 
 # ── Platform ──────────────────────────────────────────────────────────
 [target.'cfg(unix)'.dependencies]

@@ -6,6 +6,11 @@ pub mod commit;
 pub mod rebase;
 pub mod fetch;
 pub mod push;
+// add_remote is disabled — see ISSUES.md (unvalidated URL → CVE-2017-
+// 1000117-class arg injection on next fetch). The module is kept under
+// dead_code so re-enabling it is one line; the dispatch arm below
+// renders a "feature disabled" notice instead of the form.
+#[allow(dead_code)]
 pub mod add_remote;
 pub mod branch;
 pub mod merge;
@@ -31,12 +36,52 @@ pub fn view(state: &mut AppState) -> Option<impl xilem::WidgetView<AppState>> {
         Modal::Commit(_)     => commit::view(state).boxed(),
         Modal::Merge(_)      => merge::view(state).boxed(),
         Modal::Rebase(_)     => rebase::view(state).boxed(),
-        Modal::AddRemote(_)  => add_remote::view(state).boxed(),
+        Modal::AddRemote(_)  => disabled_view(
+            "Add remote — disabled",
+            "This action is temporarily disabled in gitara — it can pass\n\
+             unvalidated URLs to `git remote add`. Use the CLI instead:\n\n\
+             git remote add <name> <url>",
+            &state.theme.clone(),
+        ).boxed(),
         Modal::CherryPick(_)   => cherry_pick::view(state).boxed(),
         Modal::Reset(_)        => reset::view(state).boxed(),
         Modal::RenameBranch(_) => rename_branch::view(state).boxed(),
         Modal::Tag(_)          => tag::view(state).boxed(),
     })
+}
+
+/// Modal body shown for actions that are intentionally disabled.
+/// Renders the title + subtitle + a Close-only footer using the
+/// shared shell.
+fn disabled_view(
+    title: &'static str,
+    body_text: &'static str,
+    theme: &Theme,
+) -> impl xilem::WidgetView<AppState> {
+    let body: Box<xilem::AnyWidgetView<AppState>> = label(body_text.to_string())
+        .brush(theme.text_muted)
+        .text_size(12.0)
+        .boxed();
+    let footer: Box<xilem::AnyWidgetView<AppState>> = flex((
+        FlexSpacer::Flex(1.0),
+        flat_button(
+            xilem::view::label("Close").brush(theme.text).text_size(12.0),
+            FlatStyle {
+                idle_bg: None,
+                hover_bg: theme.bg_hover,
+                active_bg: None,
+                radius: 4.0,
+                padding_v: 6.0,
+                padding_h: 14.0,
+            },
+            false,
+            |s: &mut AppState| s.modal = None,
+        ),
+    ))
+    .direction(Axis::Horizontal)
+    .gap(8.0)
+    .boxed();
+    shell(title, "", body, footer, theme)
 }
 
 /// Shared chrome: backdrop + centered card with title/subtitle, a body, and a footer.
