@@ -1,0 +1,442 @@
+//! Writes and network ops — these shell out to `git` rather than using
+//! `git2` directly. Why:
+//!   * the user's git config (gpg.signingkey, commit.gpgsign,
+//!     core.hooksPath, includeIf, credential helpers, signing keys)
+//!     just works — we don't have to reimplement any of it.
+//!   * pre-commit / pre-push hooks fire as the user expects.
+//!   * SSH agent / smart-card auth is git's problem.
+//!   * the operation is byte-for-byte what the user would type.
+//!   * we never have to chase a libgit2 bug for a write op.
+//!
+//! Reads (log, refs, diff, status) stay on the libraries — they're
+//! independent of user config and we already pay for parsing the object
+//! database in-process.
+
+use std::ffi::OsStr;
+use std::path::Path;
+use std::process::{Command, Output};
+
+use anyhow::Context;
+
+/// Run `git <args>` in `repo_path`. Returns stdout on success; bails with
+/// stderr (or stdout if stderr is empty) on non-zero exit.
+fn git<I, S>(repo_path: &Path, args: I) -> anyhow::Result<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let args: Vec<_> = args.into_iter().collect();
+    let argv: Vec<String> = args
+        .iter()
+        .map(|s| s.as_ref().to_string_lossy().into_owned())
+        .collect();
+
+    let output: Output = Command::new("git")
+        .current_dir(repo_path)
+        .args(&args)
+        .output()
+        .with_context(|| format!("spawn `git {}` in {}", argv.join(" "), repo_path.display()))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let msg = if !stderr.is_empty() { stderr } else { stdout };
+        anyhow::bail!("git {}: {msg}", argv.join(" "));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+// ── operations ──────────────────────────────────────────────────────────
+
+/// Create a new local branch. `from` is any rev-spec git accepts; defaults
+/// to HEAD. Returns the resolved tip oid.
+pub fn create_branch(
+    repo_path: &Path,
+    name: &str,
+    from: Option<&str>,
+    checkout: bool,
+) -> anyhow::Result<String> {
+    if name.trim().is_empty() {
+        anyhow::bail!("branch name is empty");
+    }
+    let mut args: Vec<&str> = vec!["branch", name];
+    if let Some(rev) = from {
+        args.push(rev);
+    }
+    git(repo_path, &args)?;
+    if checkout {
+        git(repo_path, &["checkout", name])?;
+    }
+    let oid = git(repo_path, &["rev-parse", &format!("refs/heads/{name}")])?;
+    Ok(oid.trim().to_string())
+}
+
+/// `git branch -d <name>` (safe) or `-D` (force). Safe delete refuses
+/// when the branch isn't fully merged into HEAD; force deletes anyway.
+pub fn delete_branch(repo_path: &Path, name: &str, force: bool) -> anyhow::Result<()> {
+    if name.trim().is_empty() {
+        anyhow::bail!("branch name is empty");
+    }
+    let flag = if force { "-D" } else { "-d" };
+    git(repo_path, &["branch", flag, name])?;
+    Ok(())
+}
+
+/// `git branch -m <old> <new>`.
+pub fn rename_branch(repo_path: &Path, old: &str, new: &str) -> anyhow::Result<()> {
+    if old.trim().is_empty() || new.trim().is_empty() {
+        anyhow::bail!("rename: empty name");
+    }
+    git(repo_path, &["branch", "-m", old, new])?;
+    Ok(())
+}
+
+/// `git remote remove <name>`.
+pub fn remove_remote(repo_path: &Path, name: &str) -> anyhow::Result<()> {
+    if name.trim().is_empty() {
+        anyhow::bail!("remote name is empty");
+    }
+    git(repo_path, &["remote", "remove", name])?;
+    Ok(())
+}
+
+/// `git tag -d <name>`.
+pub fn delete_tag(repo_path: &Path, name: &str) -> anyhow::Result<()> {
+    if name.trim().is_empty() {
+        anyhow::bail!("tag name is empty");
+    }
+    git(repo_path, &["tag", "-d", name])?;
+    Ok(())
+}
+
+/// Create a tag. When `message` is non-empty, creates an annotated tag
+/// (`git tag -a -m`) — that goes through the user's signing/hooks/config
+/// just like a commit. When empty, creates a lightweight tag (just a ref
+/// pointing to the commit). `oid` defaults to HEAD.
+pub fn create_tag(
+    repo_path: &Path,
+    name: &str,
+    oid: Option<&str>,
+    message: &str,
+) -> anyhow::Result<()> {
+    if name.trim().is_empty() {
+        anyhow::bail!("tag name is empty");
+    }
+    let mut args: Vec<&str> = vec!["tag"];
+    if !message.trim().is_empty() {
+        args.push("-a");
+        args.push("-m");
+        args.push(message);
+    }
+    args.push(name);
+    if let Some(rev) = oid {
+        args.push(rev);
+    }
+    git(repo_path, &args)?;
+    Ok(())
+}
+
+/// `git stash apply stash@{idx}` — applies the stash but keeps it.
+pub fn stash_apply(repo_path: &Path, idx: u32) -> anyhow::Result<()> {
+    git(repo_path, &["stash", "apply", &format!("stash@{{{idx}}}")])?;
+    Ok(())
+}
+
+/// `git stash pop stash@{idx}` — applies and drops on success.
+pub fn stash_pop(repo_path: &Path, idx: u32) -> anyhow::Result<()> {
+    git(repo_path, &["stash", "pop", &format!("stash@{{{idx}}}")])?;
+    Ok(())
+}
+
+/// `git stash drop stash@{idx}`.
+pub fn stash_drop(repo_path: &Path, idx: u32) -> anyhow::Result<()> {
+    git(repo_path, &["stash", "drop", &format!("stash@{{{idx}}}")])?;
+    Ok(())
+}
+
+/// Check out a branch, ref, or commit. Defers to git's own logic about
+/// whether the working tree is too dirty to switch — when git refuses,
+/// the error surfaces with its full stderr.
+pub fn checkout(repo_path: &Path, refspec: &str) -> anyhow::Result<()> {
+    if refspec.trim().is_empty() {
+        anyhow::bail!("checkout target is empty");
+    }
+    git(repo_path, &["checkout", refspec])?;
+    Ok(())
+}
+
+/// Stage a list of paths.
+#[allow(dead_code)] // exposed for future Changes-tab actions.
+pub fn stage(repo_path: &Path, paths: &[&Path]) -> anyhow::Result<()> {
+    if paths.is_empty() {
+        return Ok(());
+    }
+    let mut args: Vec<&OsStr> = vec![OsStr::new("add"), OsStr::new("--")];
+    args.extend(paths.iter().map(|p| p.as_os_str()));
+    git(repo_path, &args)?;
+    Ok(())
+}
+
+/// Unstage (reset HEAD --) a list of paths.
+#[allow(dead_code)] // exposed for future Changes-tab actions.
+pub fn unstage(repo_path: &Path, paths: &[&Path]) -> anyhow::Result<()> {
+    if paths.is_empty() {
+        return Ok(());
+    }
+    let mut args: Vec<&OsStr> = vec![OsStr::new("reset"), OsStr::new("HEAD"), OsStr::new("--")];
+    args.extend(paths.iter().map(|p| p.as_os_str()));
+    git(repo_path, &args)?;
+    Ok(())
+}
+
+/// Discard working-tree changes for the given paths. Destructive — the
+/// caller should confirm.
+#[allow(dead_code)] // exposed for future Changes-tab actions.
+pub fn discard(repo_path: &Path, paths: &[&Path]) -> anyhow::Result<()> {
+    if paths.is_empty() {
+        return Ok(());
+    }
+    let mut args: Vec<&OsStr> = vec![OsStr::new("checkout"), OsStr::new("--")];
+    args.extend(paths.iter().map(|p| p.as_os_str()));
+    git(repo_path, &args)?;
+    Ok(())
+}
+
+/// Create a commit on HEAD. `message` is passed via -m. When `amend`,
+/// rewrites the previous commit. User's signing/hooks/config apply.
+pub fn commit(repo_path: &Path, message: &str, amend: bool) -> anyhow::Result<String> {
+    if message.trim().is_empty() && !amend {
+        anyhow::bail!("commit message is empty");
+    }
+    let mut args: Vec<&str> = vec!["commit", "-m", message];
+    if amend {
+        args.push("--amend");
+    }
+    git(repo_path, &args)?;
+    let oid = git(repo_path, &["rev-parse", "HEAD"])?;
+    Ok(oid.trim().to_string())
+}
+
+pub fn fetch(repo_path: &Path, remote: &str, prune: bool) -> anyhow::Result<()> {
+    let mut args: Vec<&str> = vec!["fetch"];
+    if prune {
+        args.push("--prune");
+    }
+    if !remote.is_empty() {
+        args.push(remote);
+    }
+    git(repo_path, &args)?;
+    Ok(())
+}
+
+pub fn push(
+    repo_path: &Path,
+    remote: &str,
+    branch: &str,
+    force_with_lease: bool,
+) -> anyhow::Result<()> {
+    let mut args: Vec<&str> = vec!["push"];
+    if force_with_lease {
+        args.push("--force-with-lease");
+    }
+    if !remote.is_empty() { args.push(remote); }
+    if !branch.is_empty() { args.push(branch); }
+    git(repo_path, &args)?;
+    Ok(())
+}
+
+pub fn pull(repo_path: &Path) -> anyhow::Result<()> {
+    git(repo_path, &["pull"])?;
+    Ok(())
+}
+
+pub fn merge(repo_path: &Path, from: &str) -> anyhow::Result<()> {
+    git(repo_path, &["merge", from])?;
+    Ok(())
+}
+
+pub fn rebase(repo_path: &Path, onto: &str) -> anyhow::Result<()> {
+    git(repo_path, &["rebase", onto])?;
+    Ok(())
+}
+
+pub fn add_remote(repo_path: &Path, name: &str, url: &str) -> anyhow::Result<()> {
+    if name.trim().is_empty() {
+        anyhow::bail!("remote name is empty");
+    }
+    if url.trim().is_empty() {
+        anyhow::bail!("remote URL is empty");
+    }
+    git(repo_path, &["remote", "add", name, url])?;
+    Ok(())
+}
+
+/// `git reset {--soft|--mixed|--hard} <oid>`.
+pub fn reset(repo_path: &Path, oid: &str, mode: crate::app::ResetMode) -> anyhow::Result<()> {
+    if oid.trim().is_empty() {
+        anyhow::bail!("reset target is empty");
+    }
+    let flag = match mode {
+        crate::app::ResetMode::Soft  => "--soft",
+        crate::app::ResetMode::Mixed => "--mixed",
+        crate::app::ResetMode::Hard  => "--hard",
+    };
+    git(repo_path, &["reset", flag, oid])?;
+    Ok(())
+}
+
+pub fn cherry_pick(repo_path: &Path, oids: &[&str]) -> anyhow::Result<()> {
+    if oids.is_empty() {
+        return Ok(());
+    }
+    let mut args: Vec<&str> = vec!["cherry-pick"];
+    args.extend_from_slice(oids);
+    git(repo_path, &args)?;
+    Ok(())
+}
+
+// ── tests ───────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::git::test_fixture::{fixture, seed_commits};
+
+    fn head_oid(path: &Path) -> String {
+        git2::Repository::open(path)
+            .unwrap()
+            .head()
+            .unwrap()
+            .peel_to_commit()
+            .unwrap()
+            .id()
+            .to_string()
+    }
+
+    #[test]
+    fn create_branch_from_head() {
+        let repo = fixture("create_branch_head");
+        seed_commits(&repo, &["first", "second"]);
+        let oid = create_branch(&repo, "feature/x", None, false).unwrap();
+        assert_eq!(oid, head_oid(&repo));
+    }
+
+    #[test]
+    fn create_branch_from_explicit_rev() {
+        let repo = fixture("create_branch_rev");
+        seed_commits(&repo, &["a", "b", "c"]);
+
+        // Use HEAD~1 — git resolves it via shell-out.
+        let oid = create_branch(&repo, "back", Some("HEAD~1"), false).unwrap();
+        let g = git2::Repository::open(&repo).unwrap();
+        let parent = g.head().unwrap().peel_to_commit().unwrap().parent(0).unwrap();
+        assert_eq!(oid, parent.id().to_string());
+    }
+
+    #[test]
+    fn create_branch_duplicate_fails() {
+        let repo = fixture("create_branch_dup");
+        seed_commits(&repo, &["only"]);
+        create_branch(&repo, "dup", None, false).unwrap();
+        let err = create_branch(&repo, "dup", None, false).unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(msg.contains("dup") || msg.contains("exists"), "unexpected err: {msg}");
+    }
+
+    #[test]
+    fn create_branch_empty_name_fails() {
+        let repo = fixture("create_branch_empty");
+        seed_commits(&repo, &["only"]);
+        let err = create_branch(&repo, "   ", None, false).unwrap_err();
+        assert!(format!("{err:#}").contains("empty"));
+    }
+
+    #[test]
+    fn create_branch_checkout_moves_head() {
+        let repo = fixture("create_branch_checkout");
+        seed_commits(&repo, &["x"]);
+        create_branch(&repo, "feature/checkout", None, true).unwrap();
+        let g = git2::Repository::open(&repo).unwrap();
+        assert_eq!(g.head().unwrap().shorthand().unwrap(), "feature/checkout");
+    }
+
+    #[test]
+    fn checkout_branch_moves_head() {
+        let repo = fixture("checkout_branch");
+        seed_commits(&repo, &["a", "b"]);
+        create_branch(&repo, "side", None, false).unwrap();
+        checkout(&repo, "side").unwrap();
+        let g = git2::Repository::open(&repo).unwrap();
+        assert_eq!(g.head().unwrap().shorthand().unwrap(), "side");
+    }
+
+    #[test]
+    fn checkout_unknown_ref_fails() {
+        let repo = fixture("checkout_unknown");
+        seed_commits(&repo, &["only"]);
+        let err = checkout(&repo, "nope-never-existed").unwrap_err();
+        // git's stderr surfaces — verifies we're actually shelling out.
+        let msg = format!("{err:#}");
+        assert!(msg.contains("nope-never-existed") || msg.contains("did not match"));
+    }
+
+    #[test]
+    fn commit_creates_new_oid() {
+        use std::fs;
+        let repo = fixture("commit_works");
+        seed_commits(&repo, &["a"]);
+        let before = head_oid(&repo);
+
+        // Stage a new file then commit via the op.
+        fs::write(repo.join("new.txt"), "hello").unwrap();
+        stage(&repo, &[Path::new("new.txt")]).unwrap();
+        let new_oid = commit(&repo, "second", false).unwrap();
+
+        assert_ne!(new_oid, before);
+        assert_eq!(new_oid, head_oid(&repo));
+    }
+
+    #[test]
+    fn commit_empty_message_fails() {
+        let repo = fixture("commit_empty");
+        seed_commits(&repo, &["a"]);
+        let err = commit(&repo, "   ", false).unwrap_err();
+        assert!(format!("{err:#}").contains("empty"));
+    }
+
+    #[test]
+    fn create_lightweight_tag_at_head() {
+        let repo = fixture("tag_lightweight");
+        seed_commits(&repo, &["a", "b"]);
+        create_tag(&repo, "v0.1.0", None, "").unwrap();
+        let g = git2::Repository::open(&repo).unwrap();
+        let r = g.find_reference("refs/tags/v0.1.0").unwrap();
+        assert_eq!(r.target().unwrap().to_string(), head_oid(&repo));
+    }
+
+    #[test]
+    fn create_annotated_tag_at_specific_commit() {
+        let repo = fixture("tag_annotated");
+        seed_commits(&repo, &["a", "b", "c"]);
+        let g = git2::Repository::open(&repo).unwrap();
+        let parent_oid = g.head().unwrap().peel_to_commit().unwrap()
+            .parent(0).unwrap().id().to_string();
+
+        create_tag(&repo, "release", Some(&parent_oid), "release notes").unwrap();
+        let r = g.find_reference("refs/tags/release").unwrap();
+        // Annotated tags resolve via peel.
+        let target_oid = r.peel(git2::ObjectType::Commit).unwrap().id().to_string();
+        assert_eq!(target_oid, parent_oid);
+        // Annotated tags have a tag object — check the message.
+        let tag_obj = g.find_tag(r.target().unwrap()).unwrap();
+        assert_eq!(tag_obj.message().unwrap().trim(), "release notes");
+    }
+
+    #[test]
+    fn create_tag_empty_name_fails() {
+        let repo = fixture("tag_empty_name");
+        seed_commits(&repo, &["a"]);
+        let err = create_tag(&repo, "  ", None, "").unwrap_err();
+        assert!(format!("{err:#}").contains("empty"));
+    }
+}
