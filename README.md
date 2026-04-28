@@ -2,6 +2,9 @@
 
 A native git GUI in Rust.
 
+<img width="1924" height="1237" alt="image" src="https://github.com/user-attachments/assets/be128872-c392-4e6a-b4e0-455b9f2d679a" />
+
+
 ## Install
 
 ```sh
