@@ -17,7 +17,9 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
         0 => String::new(),
         1 => {
             let oid = &state.selection.set[0];
-            state.commits.iter()
+            state
+                .commits
+                .iter()
                 .find(|c| &c.oid == oid)
                 .map(|c| format!("{} · {}", c.short, c.subject))
                 .unwrap_or_default()

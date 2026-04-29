@@ -101,13 +101,10 @@ pub fn compute(commits: &[Commit]) -> Vec<RowLayout> {
         }
         for p in c.parents.iter().skip(1) {
             // Fresh column for each additional parent.
-            let free = active
-                .iter()
-                .position(|s| s.is_none())
-                .unwrap_or_else(|| {
-                    active.push(None);
-                    active.len() - 1
-                });
+            let free = active.iter().position(|s| s.is_none()).unwrap_or_else(|| {
+                active.push(None);
+                active.len() - 1
+            });
             active[free] = Some(p.clone());
             extra_parent_columns.push(free as u8);
         }
@@ -148,7 +145,10 @@ mod tests {
 
     fn mk(oid: &str, parents: &[&str]) -> Commit {
         let now = OffsetDateTime::now_utc();
-        let a = Author { name: "t".into(), email: "t@t".into() };
+        let a = Author {
+            name: "t".into(),
+            email: "t@t".into(),
+        };
         Commit {
             oid: oid.into(),
             short: oid[..oid.len().min(7)].into(),
@@ -171,7 +171,9 @@ mod tests {
         assert_eq!(rows[0].column, 0);
         assert_eq!(rows[1].column, 0);
         assert_eq!(rows[2].column, 0);
-        for r in &rows { assert!(r.through.is_empty()); }
+        for r in &rows {
+            assert!(r.through.is_empty());
+        }
     }
 
     #[test]
@@ -306,7 +308,9 @@ mod tests {
         let rows = compute(&commits);
         let d_row = &rows[3];
         assert!(d_row.terminating.contains(&1u8));
-        assert!(!d_row.through.contains(&1u8),
-            "a terminating column must not also be drawn as a through line");
+        assert!(
+            !d_row.through.contains(&1u8),
+            "a terminating column must not also be drawn as a through line"
+        );
     }
 }

@@ -7,17 +7,17 @@
 //! https://github.com/linebender/xilem/tree/main/xilem/examples for your pin.
 
 mod app;
-mod theme;
+mod desktop_install;
 mod fonts;
-mod model;
 mod git;
 mod graph_layout;
-mod widgets;
-mod views;
-mod persist;
-mod mock;
 mod logo;
-mod desktop_install;
+mod mock;
+mod model;
+mod persist;
+mod theme;
+mod views;
+mod widgets;
 
 use app::AppState;
 
@@ -32,9 +32,7 @@ fn main() -> anyhow::Result<()> {
     // pinning the candidate set keeps the broken backend out. On macOS we
     // only have Metal; on Windows DX12 is the native pick. Respect any
     // existing user override.
-    if std::env::var_os("WGPU_BACKEND").is_none()
-        && std::env::var_os("WGPU_BACKENDS").is_none()
-    {
+    if std::env::var_os("WGPU_BACKEND").is_none() && std::env::var_os("WGPU_BACKENDS").is_none() {
         // Per-OS defaults match what other wgpu apps (Bevy, Zed) use.
         // Safe: we're still single-threaded — wgpu reads this lazily.
         let preferred = if cfg!(target_os = "macos") {
@@ -55,9 +53,15 @@ fn main() -> anyhow::Result<()> {
             // Probing libvulkan.so.1 with dlopen is cheap and doesn't
             // load any Vulkan driver — libvulkan is just the libglvnd
             // dispatcher.
-            if linux_has_vulkan() { "vulkan" } else { "gl" }
+            if linux_has_vulkan() {
+                "vulkan"
+            } else {
+                "gl"
+            }
         };
-        unsafe { std::env::set_var("WGPU_BACKEND", preferred); }
+        unsafe {
+            std::env::set_var("WGPU_BACKEND", preferred);
+        }
     }
 
     // Last-resort safety net. Even with vulkan-only there are still
@@ -104,16 +108,10 @@ fn main() -> anyhow::Result<()> {
     {
         use xilem::winit::platform::wayland::WindowAttributesExtWayland;
         use xilem::winit::platform::x11::WindowAttributesExtX11;
-        window_attributes = WindowAttributesExtWayland::with_name(
-            window_attributes,
-            "gitara",
-            "gitara",
-        );
-        window_attributes = WindowAttributesExtX11::with_name(
-            window_attributes,
-            "gitara",
-            "gitara",
-        );
+        window_attributes =
+            WindowAttributesExtWayland::with_name(window_attributes, "gitara", "gitara");
+        window_attributes =
+            WindowAttributesExtX11::with_name(window_attributes, "gitara", "gitara");
     }
 
     // Headless screenshot harness runs inside Xvfb without a window manager;
@@ -142,7 +140,9 @@ fn main() -> anyhow::Result<()> {
         }
     };
     #[cfg(unix)]
-    unsafe { libc::_exit(code); }
+    unsafe {
+        libc::_exit(code);
+    }
     #[cfg(not(unix))]
     std::process::exit(code);
 }
@@ -165,7 +165,9 @@ fn linux_has_vulkan() -> bool {
     }
 }
 #[cfg(any(not(unix), target_os = "macos"))]
-fn linux_has_vulkan() -> bool { true }
+fn linux_has_vulkan() -> bool {
+    true
+}
 
 /// Install a SIGSEGV handler that prints a one-line message and hard-exits
 /// the process. Trades coredump-on-crash (for debugging) for clean shutdown
@@ -175,11 +177,7 @@ fn linux_has_vulkan() -> bool { true }
 /// handler. No allocation, no locking, no Rust runtime calls.
 #[cfg(unix)]
 fn install_segv_handler() {
-    extern "C" fn handler(
-        _sig: libc::c_int,
-        _info: *mut libc::siginfo_t,
-        _ctx: *mut libc::c_void,
-    ) {
+    extern "C" fn handler(_sig: libc::c_int, _info: *mut libc::siginfo_t, _ctx: *mut libc::c_void) {
         const MSG: &[u8] = b"gitara: SIGSEGV during shutdown - exiting cleanly (set GITARA_DEBUG_CRASHES=1 for a coredump)\n";
         unsafe {
             libc::write(2, MSG.as_ptr() as *const _, MSG.len());

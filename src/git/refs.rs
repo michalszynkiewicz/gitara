@@ -1,19 +1,19 @@
 //! Branches, remotes, tags via `gix`.
 
-use std::path::Path;
 use anyhow::Context;
+use std::path::Path;
 use time::OffsetDateTime;
 
 use crate::model::{
-    repo::{Branch, HeadState, RepoView, Remote, Stash, Tag},
     reflog::ReflogEntry,
+    repo::{Branch, HeadState, Remote, RepoView, Stash, Tag},
 };
 
 pub fn load_repo(path: &Path) -> anyhow::Result<RepoView> {
     // Walk upwards for a `.git` — so running gitara from a subdirectory
     // (e.g. ./gitara/ inside the gitl repo) still finds the repo root.
-    let repo = gix::discover(path)
-        .with_context(|| format!("discover git repo at {}", path.display()))?;
+    let repo =
+        gix::discover(path).with_context(|| format!("discover git repo at {}", path.display()))?;
 
     // After discovery, the "real" repo path is the work_dir, not the
     // starting path — reflect that in state so write ops target the right
@@ -58,7 +58,9 @@ fn head_state(repo: &gix::Repository) -> anyhow::Result<HeadState> {
             let name = r.name.shorten().to_string();
             Ok(HeadState::Branch { name })
         }
-        gix::head::Kind::Detached { target, .. } => Ok(HeadState::Detached { oid: target.to_string() }),
+        gix::head::Kind::Detached { target, .. } => Ok(HeadState::Detached {
+            oid: target.to_string(),
+        }),
         gix::head::Kind::Unborn(_) => Ok(HeadState::Unborn),
     }
 }
@@ -72,9 +74,15 @@ fn local_branches(repo: &gix::Repository) -> anyhow::Result<Vec<Branch>> {
     };
 
     for r in platform.local_branches()? {
-        let mut r = match r { Ok(r) => r, Err(_) => continue };
+        let mut r = match r {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
         let short = r.name().shorten().to_string();
-        let tip = match r.peel_to_id() { Ok(id) => id.to_string(), Err(_) => continue };
+        let tip = match r.peel_to_id() {
+            Ok(id) => id.to_string(),
+            Err(_) => continue,
+        };
         // Upstream branch + ahead/behind: gix doesn't expose a one-liner for this,
         // and the config-based lookup is tricky. For now, no upstream info.
         out.push(Branch {
@@ -93,7 +101,9 @@ fn remotes(repo: &gix::Repository) -> anyhow::Result<Vec<Remote>> {
     use crate::model::repo::RemoteBranch;
     let mut out = Vec::new();
     // remote_names is a BTreeSet-like iterator of Cow<'_, BStr>.
-    let names: Vec<String> = repo.remote_names().into_iter()
+    let names: Vec<String> = repo
+        .remote_names()
+        .into_iter()
         .map(|n| n.to_string())
         .collect();
 
@@ -101,12 +111,16 @@ fn remotes(repo: &gix::Repository) -> anyhow::Result<Vec<Remote>> {
     // We resolve each ref to its tip oid so the log walker can use it as a
     // starting point and the graph can render a chip on the right commit.
     let platform = repo.references()?;
-    let mut per_remote: std::collections::BTreeMap<String, Vec<RemoteBranch>> =
-        Default::default();
+    let mut per_remote: std::collections::BTreeMap<String, Vec<RemoteBranch>> = Default::default();
     for r in platform.remote_branches()? {
-        let mut r = match r { Ok(r) => r, Err(_) => continue };
+        let mut r = match r {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
         let full = r.name().shorten().to_string(); // "origin/main"
-        let Some((remote, _)) = full.split_once('/') else { continue };
+        let Some((remote, _)) = full.split_once('/') else {
+            continue;
+        };
         let remote = remote.to_string();
         let oid = match r.peel_to_id() {
             Ok(id) => id.to_string(),
@@ -142,9 +156,15 @@ fn tags(repo: &gix::Repository) -> anyhow::Result<Vec<Tag>> {
     let platform = repo.references()?;
     let mut out = Vec::new();
     for r in platform.tags()? {
-        let mut r = match r { Ok(r) => r, Err(_) => continue };
+        let mut r = match r {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
         let name = r.name().shorten().to_string();
-        let oid = match r.peel_to_id() { Ok(id) => id.to_string(), Err(_) => continue };
+        let oid = match r.peel_to_id() {
+            Ok(id) => id.to_string(),
+            Err(_) => continue,
+        };
         // Annotated-vs-lightweight and tag date: need to peel and inspect the tag object.
         // Keep it simple for first pass — mark as annotated=false, use now for date.
         out.push(Tag {
@@ -183,7 +203,10 @@ fn load_stashes(repo_path: &Path) -> anyhow::Result<Vec<Stash>> {
 
 fn parse_stash_message(raw: &str) -> (String, String) {
     let raw = raw.trim();
-    if let Some(rest) = raw.strip_prefix("WIP on ").or_else(|| raw.strip_prefix("On ")) {
+    if let Some(rest) = raw
+        .strip_prefix("WIP on ")
+        .or_else(|| raw.strip_prefix("On "))
+    {
         if let Some((branch, msg)) = rest.split_once(": ") {
             return (branch.to_string(), msg.to_string());
         }
@@ -244,7 +267,11 @@ fn parse_reflog_message(raw: &str) -> (crate::model::reflog::ReflogAction, Strin
         s if s.starts_with("cherry-pick") => A::CherryPick,
         _ => A::Other,
     };
-    let subject = if subject.is_empty() { raw.to_string() } else { subject };
+    let subject = if subject.is_empty() {
+        raw.to_string()
+    } else {
+        subject
+    };
     (action, subject)
 }
 
@@ -276,13 +303,16 @@ mod tests {
         let repo = fixture("reflog_seeded");
         seed_commits(&repo, &["a", "b", "c"]);
         let entries = reflog(&repo).unwrap();
-        assert!(entries.len() >= 3, "expected at least 3 reflog entries, got {}", entries.len());
+        assert!(
+            entries.len() >= 3,
+            "expected at least 3 reflog entries, got {}",
+            entries.len()
+        );
         // First entry (idx 0) is the most recent action — for our seed, the
         // last commit. Either Commit or some other write action.
         assert!(matches!(
             entries[0].action,
-            crate::model::reflog::ReflogAction::Commit
-                | crate::model::reflog::ReflogAction::Other
+            crate::model::reflog::ReflogAction::Commit | crate::model::reflog::ReflogAction::Other
         ));
     }
 }

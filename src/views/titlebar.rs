@@ -14,8 +14,8 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     // D (dark). We'll label the button with just "Light" / "Dark" so it's
     // unambiguous without relying on symbols our font may not have.
     let (label_text, next_mode_text) = match mode {
-        ThemeMode::Light => ("Light",  "Dark"),
-        ThemeMode::Dark  => ("Dark",   "Light"),
+        ThemeMode::Light => ("Light", "Dark"),
+        ThemeMode::Dark => ("Dark", "Light"),
     };
     let _ = next_mode_text;
 

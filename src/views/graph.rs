@@ -3,7 +3,7 @@
 use crate::app::{AppState, CtxMenu, CtxMenuKind, View};
 use crate::graph_layout::{self, RowLayout};
 use crate::model::commit::Commit;
-use crate::model::reflog::{ReflogEntry, ReflogAction};
+use crate::model::reflog::{ReflogAction, ReflogEntry};
 use crate::theme::Theme;
 use crate::widgets::clickable_box::{clickable_box, ClickInfo, ClickStyle};
 use crate::widgets::flat_button::{flat_button, FlatStyle};
@@ -17,13 +17,13 @@ use xilem::WidgetView as _;
 // non-graph columns (oid, subject, …) need to know how wide the gutter
 // is and how tall the row should sit. LANE_W / NODE_D live in the
 // custom GraphGutter widget where painting happens.
-const LANE_PITCH: f64 = 14.0;   // horizontal spacing between lanes
-const ROW_H: f64 = 24.0;        // row height
+const LANE_PITCH: f64 = 14.0; // horizontal spacing between lanes
+const ROW_H: f64 = 24.0; // row height
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     let body = match state.view {
         View::History => history_table(state).boxed(),
-        View::Reflog  => reflog_table(state).boxed(),
+        View::Reflog => reflog_table(state).boxed(),
     };
 
     let theme = state.theme.clone();
@@ -35,18 +35,21 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     flex((
         sized_box(
             flex((
-                tab(&theme, "History", is_history, |s: &mut AppState| s.view = View::History),
-                tab(&theme, "Reflog",  !is_history, |s: &mut AppState| s.view = View::Reflog),
+                tab(&theme, "History", is_history, |s: &mut AppState| {
+                    s.view = View::History
+                }),
+                tab(&theme, "Reflog", !is_history, |s: &mut AppState| {
+                    s.view = View::Reflog
+                }),
                 FlexSpacer::Flex(1.0),
                 wrap_toggle(&theme, wrap),
                 all_refs_toggle(&theme, all_refs),
             ))
             .direction(Axis::Horizontal)
-            .gap(2.0)
+            .gap(2.0),
         )
         .expand_width()
         .padding(Padding::from_vh(6.0, 10.0)),
-
         // Portal wraps the History/Reflog body so it scrolls within the
         // panel instead of overflowing. .flex(1.0) makes it consume the
         // remaining vertical space below the tab strip.
@@ -73,13 +76,19 @@ fn wrap_toggle(theme: &Theme, on: bool) -> impl xilem::WidgetView<AppState> {
             padding_h: 8.0,
         },
         on,
-        |s: &mut AppState| { s.wrap_subjects = !s.wrap_subjects; },
+        |s: &mut AppState| {
+            s.wrap_subjects = !s.wrap_subjects;
+        },
     )
 }
 
 /// Pill that toggles show-all-branches (gitk --all). Reloads commits on flip.
 fn all_refs_toggle(theme: &Theme, on: bool) -> impl xilem::WidgetView<AppState> {
-    let label_text = if on { "✓ all branches" } else { "all branches" };
+    let label_text = if on {
+        "✓ all branches"
+    } else {
+        "all branches"
+    };
     flat_button(
         xilem::view::label(label_text)
             .brush(if on { theme.accent } else { theme.text_muted })
@@ -100,12 +109,20 @@ fn all_refs_toggle(theme: &Theme, on: bool) -> impl xilem::WidgetView<AppState> 
     )
 }
 
-fn tab<F>(theme: &Theme, text: &'static str, selected: bool, cb: F)
-    -> impl xilem::WidgetView<AppState>
+fn tab<F>(
+    theme: &Theme,
+    text: &'static str,
+    selected: bool,
+    cb: F,
+) -> impl xilem::WidgetView<AppState>
 where
     F: Fn(&mut AppState) + Send + Sync + 'static,
 {
-    let fg = if selected { theme.text } else { theme.text_muted };
+    let fg = if selected {
+        theme.text
+    } else {
+        theme.text_muted
+    };
     flat_button(
         xilem::view::label(text).brush(fg).text_size(12.0),
         FlatStyle {
@@ -157,7 +174,9 @@ fn working_tree_row(
 ) -> impl xilem::WidgetView<AppState> {
     use xilem::view::{flex, label, Axis, CrossAxisAlignment};
 
-    let gutter = sized_box(flex(())).width(lane_count as f64 * LANE_PITCH).height(ROW_H);
+    let gutter = sized_box(flex(()))
+        .width(lane_count as f64 * LANE_PITCH)
+        .height(ROW_H);
     let summary = status.summary();
 
     let row_inner = sized_box(
@@ -217,11 +236,17 @@ fn commit_row(
     use xilem::LineBreaking;
 
     let oid_for_chip_select = c.oid.clone();
-    let chip_views: Vec<_> = c.refs.iter()
+    let chip_views: Vec<_> = c
+        .refs
+        .iter()
         .map(|r| ref_chip(r, theme, oid_for_chip_select.clone()).boxed())
         .collect();
     let is_selected = selected_oid == Some(c.oid.as_str());
-    let subject_color = if is_selected { theme.accent } else { theme.text };
+    let subject_color = if is_selected {
+        theme.accent
+    } else {
+        theme.text
+    };
 
     // CrossAxisAlignment::Fill stretches every child to the row's full
     // height. The graph_gutter widget reads ctx.size().height in paint, so
@@ -235,13 +260,15 @@ fn commit_row(
             // long branch name pushes subsequent chips onto a new line
             // (growing the row taller) instead of overflowing the
             // column and shoving other columns sideways.
-            sized_box(flow(chip_views, 4.0, 2.0))
-                .width(180.0),
+            sized_box(flow(chip_views, 4.0, 2.0)).width(180.0),
             // Same flow trick as the author column: enforce a 74px
             // column even if the short oid renders narrower naturally,
             // so subject's flex(1.0) gets a stable allocation.
             sized_box(flow(
-                vec![label(c.short.clone()).brush(theme.text_dim).text_size(12.0).boxed()],
+                vec![label(c.short.clone())
+                    .brush(theme.text_dim)
+                    .text_size(12.0)
+                    .boxed()],
                 0.0,
                 0.0,
             ))
@@ -257,7 +284,11 @@ fn commit_row(
                 vec![label(c.subject.clone())
                     .brush(subject_color)
                     .text_size(13.0)
-                    .line_break_mode(if wrap { LineBreaking::WordWrap } else { LineBreaking::Clip })
+                    .line_break_mode(if wrap {
+                        LineBreaking::WordWrap
+                    } else {
+                        LineBreaking::Clip
+                    })
                     .boxed()],
                 0.0,
                 0.0,
@@ -286,7 +317,7 @@ fn commit_row(
         ))
         .direction(Axis::Horizontal)
         .cross_axis_alignment(CrossAxisAlignment::Fill)
-        .gap(8.0)
+        .gap(8.0),
     )
     .expand_width()
     .padding(Padding::from_vh(2.0, 6.0));
@@ -311,7 +342,9 @@ fn commit_row(
                 st.ctx_menu = Some(CtxMenu {
                     x: info.x,
                     y: info.y,
-                    kind: CtxMenuKind::Commit { oid: oid_for_click.clone() },
+                    kind: CtxMenuKind::Commit {
+                        oid: oid_for_click.clone(),
+                    },
                 });
             } else {
                 // Any other click closes a stale menu.
@@ -332,15 +365,30 @@ fn ref_chip(
 ) -> Box<xilem::AnyWidgetView<AppState>> {
     use crate::model::commit::RefChip as R;
     let (text, fg, bg_tint, border) = match chip {
-        R::Head => ("HEAD".to_string(), theme.accent_fg, theme.accent, theme.accent_hover),
+        R::Head => (
+            "HEAD".to_string(),
+            theme.accent_fg,
+            theme.accent,
+            theme.accent_hover,
+        ),
         R::Branch { name, current } => {
             if *current {
-                (name.clone(), theme.accent_fg, theme.accent, theme.accent_hover)
+                (
+                    name.clone(),
+                    theme.accent_fg,
+                    theme.accent,
+                    theme.accent_hover,
+                )
             } else {
                 (name.clone(), theme.text, theme.accent_tint, theme.border)
             }
         }
-        R::Remote { name } => (name.clone(), theme.text_muted, theme.bg_panel_3, theme.border),
+        R::Remote { name } => (
+            name.clone(),
+            theme.text_muted,
+            theme.bg_panel_3,
+            theme.border,
+        ),
         R::Tag { name, .. } => (
             format!("tag: {}", name),
             theme.warn,
@@ -382,7 +430,9 @@ fn ref_chip(
                         st.ctx_menu = Some(crate::app::CtxMenu {
                             x: info.x,
                             y: info.y,
-                            kind: CtxMenuKind::Branch { name: branch_name.clone() },
+                            kind: CtxMenuKind::Branch {
+                                name: branch_name.clone(),
+                            },
                         });
                     } else {
                         st.ctx_menu = None;
@@ -406,7 +456,9 @@ fn ref_chip(
                         st.ctx_menu = Some(crate::app::CtxMenu {
                             x: info.x,
                             y: info.y,
-                            kind: CtxMenuKind::Tag { name: tag_name.clone() },
+                            kind: CtxMenuKind::Tag {
+                                name: tag_name.clone(),
+                            },
                         });
                     } else {
                         st.ctx_menu = None;
@@ -433,7 +485,11 @@ fn blend(a: vello::peniko::Color, b: vello::peniko::Color, t: f32) -> vello::pen
 
 /// Render the row gutter via a custom widget that paints lane lines
 /// and diagonal branch / merge connectors directly to the Vello scene.
-fn graph_gutter(row: &RowLayout, lane_count: usize, theme: &Theme) -> impl xilem::WidgetView<AppState> {
+fn graph_gutter(
+    row: &RowLayout,
+    lane_count: usize,
+    theme: &Theme,
+) -> impl xilem::WidgetView<AppState> {
     graph_gutter_view::<AppState, ()>(GutterStyle {
         row: row.clone(),
         lane_count: lane_count as u8,
@@ -444,9 +500,7 @@ fn graph_gutter(row: &RowLayout, lane_count: usize, theme: &Theme) -> impl xilem
 
 fn reflog_table(state: &AppState) -> impl xilem::WidgetView<AppState> {
     let theme = state.theme.clone();
-    let rows: Vec<_> = state.reflog.iter()
-        .map(|e| reflog_row(e, &theme))
-        .collect();
+    let rows: Vec<_> = state.reflog.iter().map(|e| reflog_row(e, &theme)).collect();
     sized_box(flex(rows).direction(Axis::Vertical).gap(0.0))
         .expand_width()
         .padding(Padding::from_vh(0.0, 8.0))
@@ -475,7 +529,7 @@ fn reflog_row(e: &ReflogEntry, theme: &Theme) -> impl xilem::WidgetView<AppState
             FlexSpacer::Flex(1.0),
         ))
         .direction(Axis::Horizontal)
-        .gap(8.0)
+        .gap(8.0),
     )
     .expand_width()
     .padding(Padding::from_vh(4.0, 6.0))

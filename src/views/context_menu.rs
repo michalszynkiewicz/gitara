@@ -10,7 +10,9 @@ use crate::theme::Theme;
 use crate::widgets::clickable_box::{clickable_box, ClickInfo, ClickStyle};
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use vello::peniko::Color;
-use xilem::view::{flex, label, sized_box, zstack, Alignment, Axis, CrossAxisAlignment, FlexSpacer, Padding};
+use xilem::view::{
+    flex, label, sized_box, zstack, Alignment, Axis, CrossAxisAlignment, FlexSpacer, Padding,
+};
 use xilem::WidgetView as _;
 
 const MENU_WIDTH: f64 = 200.0;
@@ -29,12 +31,9 @@ pub fn view(state: &AppState) -> Option<impl xilem::WidgetView<AppState>> {
         flex((
             FlexSpacer::Fixed(menu.y),
             sized_box(
-                flex((
-                    FlexSpacer::Fixed(menu.x),
-                    menu_card,
-                ))
-                .direction(Axis::Horizontal)
-                .cross_axis_alignment(CrossAxisAlignment::Start),
+                flex((FlexSpacer::Fixed(menu.x), menu_card))
+                    .direction(Axis::Horizontal)
+                    .cross_axis_alignment(CrossAxisAlignment::Start),
             ),
         ))
         .direction(Axis::Vertical)
@@ -64,8 +63,8 @@ fn build_menu_card(menu: &CtxMenu, theme: &Theme) -> Box<xilem::AnyWidgetView<Ap
         CtxMenuKind::Commit { oid } => commit_items(oid.clone(), theme).boxed(),
         CtxMenuKind::Branch { name } => branch_items(name.clone(), theme).boxed(),
         CtxMenuKind::Remote { name } => remote_items(name.clone(), theme).boxed(),
-        CtxMenuKind::Tag    { name } => tag_items(name.clone(), theme).boxed(),
-        CtxMenuKind::Stash  { idx }  => stash_items(*idx, theme).boxed(),
+        CtxMenuKind::Tag { name } => tag_items(name.clone(), theme).boxed(),
+        CtxMenuKind::Stash { idx } => stash_items(*idx, theme).boxed(),
     };
 
     sized_box(items)
@@ -184,7 +183,8 @@ fn run_delete_branch(s: &mut AppState, branch: &str, force: bool) {
         Ok(()) => {
             s.refresh_all();
             s.toast = Some(Toast::info(format!(
-                "{} {branch}", if force { "force-deleted" } else { "deleted" }
+                "{} {branch}",
+                if force { "force-deleted" } else { "deleted" }
             )));
         }
         Err(e) => {
@@ -340,9 +340,13 @@ where
 }
 
 fn menu_label(text: &str, theme: &Theme) -> impl xilem::WidgetView<AppState> {
-    sized_box(label(text.to_string()).brush(theme.text_muted).text_size(11.0))
-        .expand_width()
-        .padding(Padding::from_vh(4.0, 10.0))
+    sized_box(
+        label(text.to_string())
+            .brush(theme.text_muted)
+            .text_size(11.0),
+    )
+    .expand_width()
+    .padding(Padding::from_vh(4.0, 10.0))
 }
 
 fn menu_separator(theme: &Theme) -> impl xilem::WidgetView<AppState> {
@@ -356,20 +360,18 @@ fn menu_item<F>(text: &'static str, theme: &Theme, on_click: F) -> impl xilem::W
 where
     F: Fn(&mut AppState) + Send + Sync + 'static,
 {
-    sized_box(
-        flat_button(
-            xilem::view::label(text).brush(theme.text).text_size(12.0),
-            FlatStyle {
-                idle_bg: None,
-                hover_bg: theme.bg_hover,
-                active_bg: None,
-                radius: 0.0,
-                padding_v: 6.0,
-                padding_h: 12.0,
-            },
-            false,
-            move |s: &mut AppState| on_click(s),
-        ),
-    )
+    sized_box(flat_button(
+        xilem::view::label(text).brush(theme.text).text_size(12.0),
+        FlatStyle {
+            idle_bg: None,
+            hover_bg: theme.bg_hover,
+            active_bg: None,
+            radius: 0.0,
+            padding_v: 6.0,
+            padding_h: 12.0,
+        },
+        false,
+        move |s: &mut AppState| on_click(s),
+    ))
     .expand_width()
 }

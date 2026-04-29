@@ -6,9 +6,7 @@
 //! (X11 _NET_WM_ICON) and for writing the per-size hicolor PNGs that
 //! the Wayland compositor matches via `gitara.desktop`.
 
-use tiny_skia::{
-    FilterQuality, IntSize, Pixmap, PixmapPaint, PixmapRef, Transform,
-};
+use tiny_skia::{FilterQuality, IntSize, Pixmap, PixmapPaint, PixmapRef, Transform};
 
 const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 

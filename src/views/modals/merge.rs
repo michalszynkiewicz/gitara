@@ -41,20 +41,37 @@ fn body_view(
         .weight(xilem::FontWeight::MEDIUM);
 
     let chips: Vec<_> = if branches.is_empty() {
-        vec![label("(no other branches)").brush(theme.text_muted).text_size(12.0).boxed()]
+        vec![label("(no other branches)")
+            .brush(theme.text_muted)
+            .text_size(12.0)
+            .boxed()]
     } else {
         branches
             .iter()
-            .map(|name| super::ref_chip(name, s.branch == *name, theme, |st, picked| {
-                if let Some(ms) = merge_state_mut(st) { ms.branch = picked; ms.error = None; }
-            }).boxed())
+            .map(|name| {
+                super::ref_chip(name, s.branch == *name, theme, |st, picked| {
+                    if let Some(ms) = merge_state_mut(st) {
+                        ms.branch = picked;
+                        ms.error = None;
+                    }
+                })
+                .boxed()
+            })
             .collect()
     };
 
-    let no_ff_label = if s.no_ff { "✓ no fast-forward (always create merge commit)" } else { "no fast-forward (always create merge commit)" };
+    let no_ff_label = if s.no_ff {
+        "✓ no fast-forward (always create merge commit)"
+    } else {
+        "no fast-forward (always create merge commit)"
+    };
     let no_ff_btn = flat_button(
         xilem::view::label(no_ff_label)
-            .brush(if s.no_ff { theme.accent } else { theme.text_muted })
+            .brush(if s.no_ff {
+                theme.accent
+            } else {
+                theme.text_muted
+            })
             .text_size(11.0),
         FlatStyle {
             idle_bg: None,
@@ -66,12 +83,17 @@ fn body_view(
         },
         s.no_ff,
         |st: &mut AppState| {
-            if let Some(ms) = merge_state_mut(st) { ms.no_ff = !ms.no_ff; }
+            if let Some(ms) = merge_state_mut(st) {
+                ms.no_ff = !ms.no_ff;
+            }
         },
     );
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
-        Some(err) => label(err.clone()).brush(theme.removed).text_size(11.0).boxed(),
+        Some(err) => label(err.clone())
+            .brush(theme.removed)
+            .text_size(11.0)
+            .boxed(),
         None => label("").boxed(),
     };
 
@@ -95,11 +117,15 @@ fn run_merge(st: &mut AppState) {
     };
     let repo_path = st.repo.path.clone();
     if crate::app::is_demo_repo(&repo_path) {
-        if let Some(s) = merge_state_mut(st) { s.error = Some("demo mode".into()); }
+        if let Some(s) = merge_state_mut(st) {
+            s.error = Some("demo mode".into());
+        }
         return;
     }
     if branch.is_empty() {
-        if let Some(s) = merge_state_mut(st) { s.error = Some("pick a branch to merge".into()); }
+        if let Some(s) = merge_state_mut(st) {
+            s.error = Some("pick a branch to merge".into());
+        }
         return;
     }
 
@@ -112,15 +138,23 @@ fn run_merge(st: &mut AppState) {
             st.modal = None;
         }
         Err(e) => {
-            if let Some(s) = merge_state_mut(st) { s.error = Some(format!("{e:#}")); }
+            if let Some(s) = merge_state_mut(st) {
+                s.error = Some(format!("{e:#}"));
+            }
         }
     }
 }
 
 fn merge_state(state: &AppState) -> Option<&MergeModalState> {
-    match &state.modal { Some(Modal::Merge(s)) => Some(s), _ => None }
+    match &state.modal {
+        Some(Modal::Merge(s)) => Some(s),
+        _ => None,
+    }
 }
 
 fn merge_state_mut(state: &mut AppState) -> Option<&mut MergeModalState> {
-    match &mut state.modal { Some(Modal::Merge(s)) => Some(s), _ => None }
+    match &mut state.modal {
+        Some(Modal::Merge(s)) => Some(s),
+        _ => None,
+    }
 }

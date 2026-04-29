@@ -30,7 +30,9 @@ fn body_view(
 
     let chips: Vec<_> = if remotes.is_empty() {
         vec![label("(no remotes configured)")
-            .brush(theme.text_muted).text_size(12.0).boxed()]
+            .brush(theme.text_muted)
+            .text_size(12.0)
+            .boxed()]
     } else {
         remotes
             .iter()
@@ -38,10 +40,18 @@ fn body_view(
             .collect()
     };
 
-    let prune_label = if s.prune { "✓ prune deleted remote refs" } else { "prune deleted remote refs" };
+    let prune_label = if s.prune {
+        "✓ prune deleted remote refs"
+    } else {
+        "prune deleted remote refs"
+    };
     let prune_btn = flat_button(
         xilem::view::label(prune_label)
-            .brush(if s.prune { theme.accent } else { theme.text_muted })
+            .brush(if s.prune {
+                theme.accent
+            } else {
+                theme.text_muted
+            })
             .text_size(11.0),
         FlatStyle {
             idle_bg: None,
@@ -53,14 +63,22 @@ fn body_view(
         },
         s.prune,
         |st: &mut AppState| {
-            if let Some(fs) = fetch_state_mut(st) { fs.prune = !fs.prune; }
+            if let Some(fs) = fetch_state_mut(st) {
+                fs.prune = !fs.prune;
+            }
         },
     );
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match (&s.error, s.running) {
-        (Some(err), _) => label(err.clone()).brush(theme.removed).text_size(11.0).boxed(),
-        (_, true)      => label("fetching…").brush(theme.text_muted).text_size(11.0).boxed(),
-        _              => label("").boxed(),
+        (Some(err), _) => label(err.clone())
+            .brush(theme.removed)
+            .text_size(11.0)
+            .boxed(),
+        (_, true) => label("fetching…")
+            .brush(theme.text_muted)
+            .text_size(11.0)
+            .boxed(),
+        _ => label("").boxed(),
     };
 
     flex((
@@ -80,9 +98,17 @@ fn remote_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetV
     let owned = name.to_string();
     flat_button(
         xilem::view::label(name.to_string())
-            .brush(if selected { theme.accent_fg } else { theme.text })
+            .brush(if selected {
+                theme.accent_fg
+            } else {
+                theme.text
+            })
             .text_size(11.0)
-            .weight(if selected { xilem::FontWeight::MEDIUM } else { xilem::FontWeight::NORMAL }),
+            .weight(if selected {
+                xilem::FontWeight::MEDIUM
+            } else {
+                xilem::FontWeight::NORMAL
+            }),
         FlatStyle {
             idle_bg: if selected { Some(theme.accent) } else { None },
             hover_bg: theme.bg_hover,
@@ -93,7 +119,9 @@ fn remote_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetV
         },
         selected,
         move |st: &mut AppState| {
-            if let Some(fs) = fetch_state_mut(st) { fs.remote = owned.clone(); }
+            if let Some(fs) = fetch_state_mut(st) {
+                fs.remote = owned.clone();
+            }
         },
     )
 }
@@ -106,9 +134,8 @@ fn run_fetch(st: &mut AppState) {
     let repo_path = st.repo.path.clone();
     if crate::app::is_demo_repo(&repo_path) {
         if let Some(s) = fetch_state_mut(st) {
-            s.error = Some(
-                "demo mode — start gitara from a real repo or set GITARA_REPO=<path>".into(),
-            );
+            s.error =
+                Some("demo mode — start gitara from a real repo or set GITARA_REPO=<path>".into());
         }
         return;
     }
@@ -133,9 +160,15 @@ fn run_fetch(st: &mut AppState) {
 }
 
 fn fetch_state(state: &AppState) -> Option<&FetchModalState> {
-    match &state.modal { Some(Modal::Fetch(s)) => Some(s), _ => None }
+    match &state.modal {
+        Some(Modal::Fetch(s)) => Some(s),
+        _ => None,
+    }
 }
 
 fn fetch_state_mut(state: &mut AppState) -> Option<&mut FetchModalState> {
-    match &mut state.modal { Some(Modal::Fetch(s)) => Some(s), _ => None }
+    match &mut state.modal {
+        Some(Modal::Fetch(s)) => Some(s),
+        _ => None,
+    }
 }

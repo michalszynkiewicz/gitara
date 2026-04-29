@@ -20,14 +20,17 @@ pub struct Commit {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Author { pub name: String, pub email: String }
+pub struct Author {
+    pub name: String,
+    pub email: String,
+}
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RefChip {
     Branch { name: String, current: bool },
     Remote { name: String },
-    Tag    { name: String, annotated: bool },
+    Tag { name: String, annotated: bool },
     Head,
 }
 

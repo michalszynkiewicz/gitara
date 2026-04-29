@@ -14,5 +14,15 @@ pub struct ReflogEntry {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ReflogAction {
-    Commit, Merge, Checkout, Rebase, Reset, Pull, Push, Clone, CherryPick, Amend, Other,
+    Commit,
+    Merge,
+    Checkout,
+    Rebase,
+    Reset,
+    Pull,
+    Push,
+    Clone,
+    CherryPick,
+    Amend,
+    Other,
 }

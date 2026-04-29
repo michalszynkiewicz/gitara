@@ -75,10 +75,7 @@ pub fn staged_files(repo_path: &Path) -> anyhow::Result<Vec<FileChange>> {
     let repo = git2::Repository::open(repo_path)
         .with_context(|| format!("open {}", repo_path.display()))?;
 
-    let head_tree = repo
-        .head()
-        .ok()
-        .and_then(|h| h.peel_to_tree().ok());
+    let head_tree = repo.head().ok().and_then(|h| h.peel_to_tree().ok());
     let index = repo.index().context("open index")?;
 
     let mut opts = git2::DiffOptions::new();
@@ -122,7 +119,10 @@ pub fn unstaged_files(repo_path: &Path) -> anyhow::Result<Vec<FileChange>> {
 
 /// Hunks for a single file in the index (staged side). Used by the
 /// Commit modal when a staged file is selected.
-pub fn hunks_staged_for_path(repo_path: &Path, path: &Path) -> anyhow::Result<Vec<(PathBuf, Hunk)>> {
+pub fn hunks_staged_for_path(
+    repo_path: &Path,
+    path: &Path,
+) -> anyhow::Result<Vec<(PathBuf, Hunk)>> {
     let repo = git2::Repository::open(repo_path)
         .with_context(|| format!("open {}", repo_path.display()))?;
     let head_tree = repo.head().ok().and_then(|h| h.peel_to_tree().ok());
@@ -141,7 +141,10 @@ pub fn hunks_staged_for_path(repo_path: &Path, path: &Path) -> anyhow::Result<Ve
 
 /// Hunks for a single file's unstaged (worktree-vs-index) changes.
 /// Used by the Commit modal when an unstaged file is selected.
-pub fn hunks_unstaged_for_path(repo_path: &Path, path: &Path) -> anyhow::Result<Vec<(PathBuf, Hunk)>> {
+pub fn hunks_unstaged_for_path(
+    repo_path: &Path,
+    path: &Path,
+) -> anyhow::Result<Vec<(PathBuf, Hunk)>> {
     let repo = git2::Repository::open(repo_path)
         .with_context(|| format!("open {}", repo_path.display()))?;
 
@@ -163,10 +166,7 @@ pub fn hunks_for_dirty_tree(repo_path: &Path) -> anyhow::Result<Vec<(PathBuf, Hu
     let repo = git2::Repository::open(repo_path)
         .with_context(|| format!("open {}", repo_path.display()))?;
 
-    let head_tree = repo
-        .head()
-        .ok()
-        .and_then(|h| h.peel_to_tree().ok());
+    let head_tree = repo.head().ok().and_then(|h| h.peel_to_tree().ok());
 
     let mut opts = git2::DiffOptions::new();
     opts.context_lines(3);
@@ -184,10 +184,7 @@ pub fn dirty_tree(repo_path: &Path) -> anyhow::Result<Vec<FileChange>> {
     let repo = git2::Repository::open(repo_path)
         .with_context(|| format!("open {}", repo_path.display()))?;
 
-    let head_tree = repo
-        .head()
-        .ok()
-        .and_then(|h| h.peel_to_tree().ok());
+    let head_tree = repo.head().ok().and_then(|h| h.peel_to_tree().ok());
 
     let mut opts = git2::DiffOptions::new();
     opts.include_untracked(true).recurse_untracked_dirs(true);
@@ -227,7 +224,11 @@ fn file_change_from_delta(
         .path()
         .map(|p| p.to_path_buf())
         .unwrap_or_default();
-    let old_path = delta.old_file().path().map(|p| p.to_path_buf()).filter(|op| op != &path);
+    let old_path = delta
+        .old_file()
+        .path()
+        .map(|p| p.to_path_buf())
+        .filter(|op| op != &path);
 
     FileChange {
         path,
@@ -256,9 +257,7 @@ fn per_file_stats(repo: &git2::Repository, diff: &git2::Diff<'_>, idx: usize) ->
 fn collect_hunks(diff: &git2::Diff<'_>) -> anyhow::Result<Vec<(PathBuf, Hunk)>> {
     let mut out: Vec<(PathBuf, Hunk)> = Vec::new();
     for delta_idx in 0..diff.deltas().len() {
-        let patch = match git2::Patch::from_diff(diff, delta_idx)
-            .context("build patch")?
-        {
+        let patch = match git2::Patch::from_diff(diff, delta_idx).context("build patch")? {
             Some(p) => p,
             None => continue,
         };
@@ -343,7 +342,8 @@ mod tests {
         let tree = r.find_tree(tree_id).unwrap();
         let sig = r.signature().unwrap();
         let parent = r.head().unwrap().peel_to_commit().unwrap();
-        r.commit(Some("HEAD"), &sig, &sig, "mod", &tree, &[&parent]).unwrap();
+        r.commit(Some("HEAD"), &sig, &sig, "mod", &tree, &[&parent])
+            .unwrap();
 
         let files = files_for_commit(&repo, &head_oid(&repo)).unwrap();
         assert_eq!(files.len(), 1);
@@ -365,11 +365,15 @@ mod tests {
         let tree = r.find_tree(tree_id).unwrap();
         let sig = r.signature().unwrap();
         let parent = r.head().unwrap().peel_to_commit().unwrap();
-        r.commit(Some("HEAD"), &sig, &sig, "mod", &tree, &[&parent]).unwrap();
+        r.commit(Some("HEAD"), &sig, &sig, "mod", &tree, &[&parent])
+            .unwrap();
 
         let hunks = hunks_for_commit(&repo, &head_oid(&repo), None).unwrap();
         assert!(!hunks.is_empty());
-        assert!(hunks.iter().any(|(_, h)| h.lines.iter().any(|l| matches!(l.origin, DiffOrigin::Added))));
+        assert!(hunks.iter().any(|(_, h)| h
+            .lines
+            .iter()
+            .any(|l| matches!(l.origin, DiffOrigin::Added))));
     }
 
     #[test]
@@ -421,7 +425,10 @@ mod tests {
         fs::write(repo.join("0.txt"), "first\nadded by hand\n").unwrap();
         let hunks = hunks_unstaged_for_path(&repo, Path::new("0.txt")).unwrap();
         assert!(!hunks.is_empty());
-        assert!(hunks.iter().any(|(_, h)| h.lines.iter().any(|l| matches!(l.origin, DiffOrigin::Added))));
+        assert!(hunks.iter().any(|(_, h)| h
+            .lines
+            .iter()
+            .any(|l| matches!(l.origin, DiffOrigin::Added))));
     }
 
     #[test]
@@ -432,8 +439,14 @@ mod tests {
         fs::write(repo.join("new.txt"), "untracked").unwrap();
 
         let changes = dirty_tree(&repo).unwrap();
-        let mods: Vec<_> = changes.iter().filter(|c| matches!(c.status, FileStatus::Modified)).collect();
-        let news: Vec<_> = changes.iter().filter(|c| matches!(c.status, FileStatus::Untracked)).collect();
+        let mods: Vec<_> = changes
+            .iter()
+            .filter(|c| matches!(c.status, FileStatus::Modified))
+            .collect();
+        let news: Vec<_> = changes
+            .iter()
+            .filter(|c| matches!(c.status, FileStatus::Untracked))
+            .collect();
         assert_eq!(mods.len(), 1);
         assert_eq!(news.len(), 1);
     }

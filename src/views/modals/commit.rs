@@ -32,7 +32,9 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 
 fn body_view(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let main_row = flex((
-        sized_box(left_column(s, theme)).width(280.0).expand_height(),
+        sized_box(left_column(s, theme))
+            .width(280.0)
+            .expand_height(),
         FlexSpacer::Fixed(12.0),
         right_pane(s, theme).flex(1.0),
     ))
@@ -66,10 +68,18 @@ fn body_view(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
     .rounded(4.0)
     .padding(Padding::from_vh(4.0, 8.0));
 
-    let amend_label = if s.amend { "✓ amend last commit" } else { "amend last commit" };
+    let amend_label = if s.amend {
+        "✓ amend last commit"
+    } else {
+        "amend last commit"
+    };
     let amend_btn = flat_button(
         xilem::view::label(amend_label)
-            .brush(if s.amend { theme.warn } else { theme.text_muted })
+            .brush(if s.amend {
+                theme.warn
+            } else {
+                theme.text_muted
+            })
             .text_size(11.0),
         FlatStyle {
             idle_bg: None,
@@ -81,12 +91,18 @@ fn body_view(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
         },
         s.amend,
         |st: &mut AppState| {
-            if let Some(cs) = commit_state_mut(st) { cs.amend = !cs.amend; cs.error = None; }
+            if let Some(cs) = commit_state_mut(st) {
+                cs.amend = !cs.amend;
+                cs.error = None;
+            }
         },
     );
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
-        Some(err) => label(err.clone()).brush(theme.removed).text_size(11.0).boxed(),
+        Some(err) => label(err.clone())
+            .brush(theme.removed)
+            .text_size(11.0)
+            .boxed(),
         None => label("").boxed(),
     };
 
@@ -107,11 +123,7 @@ fn body_view(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
 }
 
 fn left_column(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
-    let unstaged_header = section_header(
-        "Unstaged",
-        s.unstaged.len(),
-        theme,
-    );
+    let unstaged_header = section_header("Unstaged", s.unstaged.len(), theme);
     let staged_header = section_header("Staged", s.staged.len(), theme);
 
     let unstaged_rows: Vec<Box<xilem::AnyWidgetView<AppState>>> = if s.unstaged.is_empty() {
@@ -119,7 +131,15 @@ fn left_column(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<Ap
     } else {
         s.unstaged
             .iter()
-            .map(|f| file_row(f, /*staged=*/false, is_selected(s, &f.path, false), theme).boxed())
+            .map(|f| {
+                file_row(
+                    f,
+                    /*staged=*/ false,
+                    is_selected(s, &f.path, false),
+                    theme,
+                )
+                .boxed()
+            })
             .collect()
     };
     let staged_rows: Vec<Box<xilem::AnyWidgetView<AppState>>> = if s.staged.is_empty() {
@@ -127,7 +147,15 @@ fn left_column(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<Ap
     } else {
         s.staged
             .iter()
-            .map(|f| file_row(f, /*staged=*/true, is_selected(s, &f.path, true), theme).boxed())
+            .map(|f| {
+                file_row(
+                    f,
+                    /*staged=*/ true,
+                    is_selected(s, &f.path, true),
+                    theme,
+                )
+                .boxed()
+            })
             .collect()
     };
 
@@ -160,10 +188,14 @@ fn left_column(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<Ap
             // Flex passes a *loose* major-axis bc (min=0) and Portal's
             // layout returns content size, so flex factors alone don't
             // stretch the portal. expand_height pins it to bc.max.
-            sized_box(portal(unstaged_list)).expand_height().flex(unstaged_factor),
+            sized_box(portal(unstaged_list))
+                .expand_height()
+                .flex(unstaged_factor),
             FlexSpacer::Fixed(8.0),
             staged_header,
-            sized_box(portal(staged_list)).expand_height().flex(staged_factor),
+            sized_box(portal(staged_list))
+                .expand_height()
+                .flex(staged_factor),
         ))
         .direction(Axis::Vertical)
         .cross_axis_alignment(CrossAxisAlignment::Start)
@@ -205,7 +237,11 @@ fn right_pane(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<App
         .rounded(4.0)
 }
 
-fn section_header(text: &'static str, count: usize, theme: &Theme) -> impl xilem::WidgetView<AppState> {
+fn section_header(
+    text: &'static str,
+    count: usize,
+    theme: &Theme,
+) -> impl xilem::WidgetView<AppState> {
     let count_str = format!("{count}");
     flex((
         label(text)
@@ -233,14 +269,14 @@ fn file_row(
 ) -> impl xilem::WidgetView<AppState> {
     use crate::model::diff::FileStatus;
     let (letter, color) = match f.status {
-        FileStatus::Added      => ("A", theme.added),
-        FileStatus::Deleted    => ("D", theme.removed),
-        FileStatus::Modified   => ("M", theme.warn),
-        FileStatus::Renamed    => ("R", theme.info),
-        FileStatus::Copied     => ("C", theme.info),
+        FileStatus::Added => ("A", theme.added),
+        FileStatus::Deleted => ("D", theme.removed),
+        FileStatus::Modified => ("M", theme.warn),
+        FileStatus::Renamed => ("R", theme.info),
+        FileStatus::Copied => ("C", theme.info),
         FileStatus::TypeChange => ("T", theme.warn),
         FileStatus::Conflicted => ("!", theme.removed),
-        FileStatus::Untracked  => ("?", theme.text_dim),
+        FileStatus::Untracked => ("?", theme.text_dim),
     };
 
     let path = f.path.clone();
@@ -293,7 +329,9 @@ fn file_row(
     .cross_axis_alignment(CrossAxisAlignment::Center)
     .gap(6.0);
 
-    let row = sized_box(row_inner).expand_width().padding(Padding::from_vh(3.0, 6.0));
+    let row = sized_box(row_inner)
+        .expand_width()
+        .padding(Padding::from_vh(3.0, 6.0));
 
     clickable_box(
         row,
@@ -317,7 +355,9 @@ fn footer_view(s: &CommitModalState, theme: &Theme) -> Box<xilem::AnyWidgetView<
     flex((
         FlexSpacer::Flex(1.0),
         flat_button(
-            xilem::view::label("Cancel").brush(theme.text).text_size(12.0),
+            xilem::view::label("Cancel")
+                .brush(theme.text)
+                .text_size(12.0),
             FlatStyle {
                 idle_bg: None,
                 hover_bg: theme.bg_hover,
@@ -331,12 +371,24 @@ fn footer_view(s: &CommitModalState, theme: &Theme) -> Box<xilem::AnyWidgetView<
         ),
         flat_button(
             xilem::view::label(if s.amend { "Amend" } else { "Commit" })
-                .brush(if can_commit { theme.accent_fg } else { theme.text_muted })
+                .brush(if can_commit {
+                    theme.accent_fg
+                } else {
+                    theme.text_muted
+                })
                 .text_size(12.0)
                 .weight(xilem::FontWeight::MEDIUM),
             FlatStyle {
-                idle_bg: if can_commit { Some(theme.accent) } else { Some(theme.bg_panel_3) },
-                hover_bg: if can_commit { theme.accent_hover } else { theme.bg_hover },
+                idle_bg: if can_commit {
+                    Some(theme.accent)
+                } else {
+                    Some(theme.bg_panel_3)
+                },
+                hover_bg: if can_commit {
+                    theme.accent_hover
+                } else {
+                    theme.bg_hover
+                },
                 active_bg: None,
                 radius: 4.0,
                 padding_v: 6.0,
@@ -365,8 +417,11 @@ fn run_select(st: &mut AppState, path: &std::path::Path, staged: bool) {
     // 400ms also stages/unstages the file — same UX as the +/- button
     // but covers the whole row.
     let is_double = match commit_state(st).and_then(|s| s.last_click.as_ref()) {
-        Some((p, t)) if p == path
-            && now.duration_since(*t) < std::time::Duration::from_millis(400) => true,
+        Some((p, t))
+            if p == path && now.duration_since(*t) < std::time::Duration::from_millis(400) =>
+        {
+            true
+        }
         _ => false,
     };
 
@@ -425,17 +480,25 @@ fn run_commit(st: &mut AppState) {
             st.modal = None;
         }
         Err(e) => {
-            if let Some(s) = commit_state_mut(st) { s.error = Some(format!("{e:#}")); }
+            if let Some(s) = commit_state_mut(st) {
+                s.error = Some(format!("{e:#}"));
+            }
         }
     }
 }
 
 fn commit_state(state: &AppState) -> Option<&CommitModalState> {
-    match &state.modal { Some(Modal::Commit(s)) => Some(s), _ => None }
+    match &state.modal {
+        Some(Modal::Commit(s)) => Some(s),
+        _ => None,
+    }
 }
 
 fn commit_state_mut(state: &mut AppState) -> Option<&mut CommitModalState> {
-    match &mut state.modal { Some(Modal::Commit(s)) => Some(s), _ => None }
+    match &mut state.modal {
+        Some(Modal::Commit(s)) => Some(s),
+        _ => None,
+    }
 }
 
 // Keep PathBuf in scope so the type appears in compiler messages cleanly.

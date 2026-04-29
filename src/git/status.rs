@@ -24,11 +24,23 @@ impl WorkingStatus {
 
     pub fn summary(&self) -> String {
         let mut parts: Vec<String> = Vec::new();
-        if self.conflicted > 0 { parts.push(format!("{} conflicted", self.conflicted)); }
-        if self.staged     > 0 { parts.push(format!("{} staged",     self.staged)); }
-        if self.modified   > 0 { parts.push(format!("{} modified",   self.modified)); }
-        if self.untracked  > 0 { parts.push(format!("{} untracked",  self.untracked)); }
-        if parts.is_empty() { String::from("clean") } else { parts.join(" · ") }
+        if self.conflicted > 0 {
+            parts.push(format!("{} conflicted", self.conflicted));
+        }
+        if self.staged > 0 {
+            parts.push(format!("{} staged", self.staged));
+        }
+        if self.modified > 0 {
+            parts.push(format!("{} modified", self.modified));
+        }
+        if self.untracked > 0 {
+            parts.push(format!("{} untracked", self.untracked));
+        }
+        if parts.is_empty() {
+            String::from("clean")
+        } else {
+            parts.join(" · ")
+        }
     }
 }
 
@@ -62,8 +74,12 @@ pub fn read(repo_path: &Path) -> anyhow::Result<WorkingStatus> {
             .union(git2::Status::WT_DELETED)
             .union(git2::Status::WT_RENAMED)
             .union(git2::Status::WT_TYPECHANGE);
-        if st.intersects(INDEX_DIRTY) { out.staged += 1; }
-        if st.intersects(WT_DIRTY)    { out.modified += 1; }
+        if st.intersects(INDEX_DIRTY) {
+            out.staged += 1;
+        }
+        if st.intersects(WT_DIRTY) {
+            out.modified += 1;
+        }
     }
     Ok(out)
 }

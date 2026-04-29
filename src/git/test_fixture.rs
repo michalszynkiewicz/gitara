@@ -38,7 +38,10 @@ pub fn seed_commits(repo_path: &Path, subjects: &[&str]) {
 
     for (i, subject) in subjects.iter().enumerate() {
         let file = repo_path.join(format!("{i}.txt"));
-        fs::File::create(&file).unwrap().write_all(subject.as_bytes()).unwrap();
+        fs::File::create(&file)
+            .unwrap()
+            .write_all(subject.as_bytes())
+            .unwrap();
 
         let mut index = repo.index().unwrap();
         index.add_path(Path::new(&format!("{i}.txt"))).unwrap();
@@ -46,11 +49,11 @@ pub fn seed_commits(repo_path: &Path, subjects: &[&str]) {
         let tree_id = index.write_tree().unwrap();
         let tree = repo.find_tree(tree_id).unwrap();
 
-        let parents: Vec<git2::Commit> = match repo.head().ok().and_then(|h| h.peel_to_commit().ok())
-        {
-            Some(c) => vec![c],
-            None => vec![],
-        };
+        let parents: Vec<git2::Commit> =
+            match repo.head().ok().and_then(|h| h.peel_to_commit().ok()) {
+                Some(c) => vec![c],
+                None => vec![],
+            };
         let parents_ref: Vec<&git2::Commit> = parents.iter().collect();
 
         repo.commit(Some("HEAD"), &sig, &sig, subject, &tree, &parents_ref)
