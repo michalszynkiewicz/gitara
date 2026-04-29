@@ -237,10 +237,36 @@ pub fn fetch(repo_path: &Path, remote: &str, prune: bool) -> anyhow::Result<()> 
     Ok(())
 }
 
+/// Build the refspec arg for [`push`]. Pulled out so it can be unit
+/// tested at the string level without needing a real git repo.
+///
+/// Returns `None` when `local` is empty (caller should treat this as
+/// "no branch to push" and surface an error). Otherwise returns the
+/// shorter `<local>` form if `target` is empty or matches `local`,
+/// else the explicit `<local>:<target>` refspec.
+fn build_push_refspec(local: &str, target: &str) -> Option<String> {
+    if local.is_empty() {
+        return None;
+    }
+    if !target.is_empty() && target != local {
+        Some(format!("{local}:{target}"))
+    } else {
+        Some(local.to_string())
+    }
+}
+
+/// `git push [--force-with-lease] <remote> <local>[:<target>]`.
+///
+/// `local` is the branch being pushed (typically the current branch).
+/// `target` is the remote branch name to push *to*; when empty or
+/// equal to `local`, the simpler `<remote> <local>` form is used (git
+/// then pushes to a same-named remote branch). When different, gitara
+/// builds the explicit `<local>:<target>` refspec.
 pub fn push(
     repo_path: &Path,
     remote: &str,
-    branch: &str,
+    local: &str,
+    target: &str,
     force_with_lease: bool,
 ) -> anyhow::Result<()> {
     let mut args: Vec<&str> = vec!["push"];
@@ -248,8 +274,13 @@ pub fn push(
         args.push("--force-with-lease");
     }
     args.push("--end-of-options");
-    if !remote.is_empty() { args.push(remote); }
-    if !branch.is_empty() { args.push(branch); }
+    if !remote.is_empty() {
+        args.push(remote);
+    }
+    let refspec = build_push_refspec(local, target);
+    if let Some(rs) = refspec.as_deref() {
+        args.push(rs);
+    }
     git(repo_path, &args)?;
     Ok(())
 }
@@ -493,6 +524,36 @@ mod tests {
             msg.contains("-fhostile") || msg.contains("did not match") || msg.contains("not a"),
             "unexpected error (suggests the arg was interpreted as a flag): {msg}",
         );
+    }
+
+    /// Refspec construction: target equal to local (or empty) ⇒ short
+    /// form; otherwise explicit `local:target`.
+    #[test]
+    fn push_refspec_short_form_when_target_matches_local() {
+        assert_eq!(build_push_refspec("main", "main").as_deref(), Some("main"));
+        assert_eq!(build_push_refspec("main", "").as_deref(), Some("main"));
+        assert_eq!(
+            build_push_refspec("feature/x", "feature/x").as_deref(),
+            Some("feature/x"),
+        );
+    }
+
+    #[test]
+    fn push_refspec_explicit_when_target_renames() {
+        assert_eq!(
+            build_push_refspec("feature/x", "pr-123").as_deref(),
+            Some("feature/x:pr-123"),
+        );
+        assert_eq!(
+            build_push_refspec("main", "release").as_deref(),
+            Some("main:release"),
+        );
+    }
+
+    #[test]
+    fn push_refspec_none_for_empty_local() {
+        assert!(build_push_refspec("", "anything").is_none());
+        assert!(build_push_refspec("", "").is_none());
     }
 
     /// Same protection on the branch-creation path.

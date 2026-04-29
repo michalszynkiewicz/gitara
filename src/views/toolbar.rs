@@ -35,7 +35,10 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
             let remote = s.repo.remotes.first().map(|r| r.name.clone()).unwrap_or_default();
             let branch = s.repo.branches.iter().find(|b| b.current).map(|b| b.name.clone()).unwrap_or_default();
             s.modal = Some(Modal::Push(crate::app::PushModalState {
-                remote, branch, force_with_lease: false, error: None, running: false,
+                remote,
+                target_branch: branch.clone(),
+                branch,
+                force_with_lease: false, error: None, running: false,
             }));
         }),
         FlexSpacer::Fixed(12.0),
