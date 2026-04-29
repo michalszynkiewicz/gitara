@@ -19,15 +19,10 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
         .unwrap_or(false);
 
     flex((
-        tb(
-            theme,
-            "Commit",
-            primary_is_push == false,
-            |s: &mut AppState| {
-                let st = crate::app::CommitModalState::open(&s.repo.path);
-                s.modal = Some(Modal::Commit(st));
-            },
-        ),
+        tb(theme, "Commit", !primary_is_push, |s: &mut AppState| {
+            let st = crate::app::CommitModalState::open(&s.repo.path);
+            s.modal = Some(Modal::Commit(st));
+        }),
         tb(theme, "Fetch", false, |s: &mut AppState| {
             // Default to first remote in the repo (usually "origin").
             let remote = s

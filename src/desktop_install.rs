@@ -53,7 +53,7 @@ pub fn ensure_installed() -> std::io::Result<()> {
         let pixmap = crate::logo::render_pixmap_at(px);
         pixmap
             .save_png(&path)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
     }
 
     if !desktop_already {
