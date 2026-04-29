@@ -69,11 +69,11 @@ pub fn create_branch(
     }
     git(repo_path, &args)?;
     if checkout {
-        git(repo_path, &["checkout", "--end-of-options", name])?;
+        git(repo_path, ["checkout", "--end-of-options", name])?;
     }
     // rev-parse arg is `refs/heads/<name>`, prefixed with literal text
     // so the resolved arg never starts with `-` regardless of `name`.
-    let oid = git(repo_path, &["rev-parse", &format!("refs/heads/{name}")])?;
+    let oid = git(repo_path, ["rev-parse", &format!("refs/heads/{name}")])?;
     Ok(oid.trim().to_string())
 }
 
@@ -84,7 +84,7 @@ pub fn delete_branch(repo_path: &Path, name: &str, force: bool) -> anyhow::Resul
         anyhow::bail!("branch name is empty");
     }
     let flag = if force { "-D" } else { "-d" };
-    git(repo_path, &["branch", flag, "--end-of-options", name])?;
+    git(repo_path, ["branch", flag, "--end-of-options", name])?;
     Ok(())
 }
 
@@ -93,7 +93,7 @@ pub fn rename_branch(repo_path: &Path, old: &str, new: &str) -> anyhow::Result<(
     if old.trim().is_empty() || new.trim().is_empty() {
         anyhow::bail!("rename: empty name");
     }
-    git(repo_path, &["branch", "-m", "--end-of-options", old, new])?;
+    git(repo_path, ["branch", "-m", "--end-of-options", old, new])?;
     Ok(())
 }
 
@@ -102,7 +102,7 @@ pub fn remove_remote(repo_path: &Path, name: &str) -> anyhow::Result<()> {
     if name.trim().is_empty() {
         anyhow::bail!("remote name is empty");
     }
-    git(repo_path, &["remote", "remove", "--end-of-options", name])?;
+    git(repo_path, ["remote", "remove", "--end-of-options", name])?;
     Ok(())
 }
 
@@ -111,7 +111,7 @@ pub fn delete_tag(repo_path: &Path, name: &str) -> anyhow::Result<()> {
     if name.trim().is_empty() {
         anyhow::bail!("tag name is empty");
     }
-    git(repo_path, &["tag", "-d", "--end-of-options", name])?;
+    git(repo_path, ["tag", "-d", "--end-of-options", name])?;
     Ok(())
 }
 
@@ -145,19 +145,19 @@ pub fn create_tag(
 
 /// `git stash apply stash@{idx}` — applies the stash but keeps it.
 pub fn stash_apply(repo_path: &Path, idx: u32) -> anyhow::Result<()> {
-    git(repo_path, &["stash", "apply", &format!("stash@{{{idx}}}")])?;
+    git(repo_path, ["stash", "apply", &format!("stash@{{{idx}}}")])?;
     Ok(())
 }
 
 /// `git stash pop stash@{idx}` — applies and drops on success.
 pub fn stash_pop(repo_path: &Path, idx: u32) -> anyhow::Result<()> {
-    git(repo_path, &["stash", "pop", &format!("stash@{{{idx}}}")])?;
+    git(repo_path, ["stash", "pop", &format!("stash@{{{idx}}}")])?;
     Ok(())
 }
 
 /// `git stash drop stash@{idx}`.
 pub fn stash_drop(repo_path: &Path, idx: u32) -> anyhow::Result<()> {
-    git(repo_path, &["stash", "drop", &format!("stash@{{{idx}}}")])?;
+    git(repo_path, ["stash", "drop", &format!("stash@{{{idx}}}")])?;
     Ok(())
 }
 
@@ -168,7 +168,7 @@ pub fn checkout(repo_path: &Path, refspec: &str) -> anyhow::Result<()> {
     if refspec.trim().is_empty() {
         anyhow::bail!("checkout target is empty");
     }
-    git(repo_path, &["checkout", "--end-of-options", refspec])?;
+    git(repo_path, ["checkout", "--end-of-options", refspec])?;
     Ok(())
 }
 
@@ -220,7 +220,7 @@ pub fn commit(repo_path: &Path, message: &str, amend: bool) -> anyhow::Result<St
         args.push("--amend");
     }
     git(repo_path, &args)?;
-    let oid = git(repo_path, &["rev-parse", "HEAD"])?;
+    let oid = git(repo_path, ["rev-parse", "HEAD"])?;
     Ok(oid.trim().to_string())
 }
 
@@ -286,7 +286,7 @@ pub fn push(
 }
 
 pub fn pull(repo_path: &Path) -> anyhow::Result<()> {
-    git(repo_path, &["pull"])?;
+    git(repo_path, ["pull"])?;
     Ok(())
 }
 
@@ -306,7 +306,7 @@ pub fn merge(repo_path: &Path, from: &str, no_ff: bool) -> anyhow::Result<()> {
 }
 
 pub fn rebase(repo_path: &Path, onto: &str) -> anyhow::Result<()> {
-    git(repo_path, &["rebase", "--end-of-options", onto])?;
+    git(repo_path, ["rebase", "--end-of-options", onto])?;
     Ok(())
 }
 
@@ -321,7 +321,7 @@ pub fn add_remote(repo_path: &Path, name: &str, url: &str) -> anyhow::Result<()>
     // like `-oProxyCommand=...` are still interpreted by the underlying
     // transport (ssh/curl). The UI entry point is disabled in mod.rs
     // until URL scheme allow-listing lands — see ISSUES.md.
-    git(repo_path, &["remote", "add", "--end-of-options", name, url])?;
+    git(repo_path, ["remote", "add", "--end-of-options", name, url])?;
     Ok(())
 }
 
@@ -335,7 +335,7 @@ pub fn reset(repo_path: &Path, oid: &str, mode: crate::app::ResetMode) -> anyhow
         crate::app::ResetMode::Mixed => "--mixed",
         crate::app::ResetMode::Hard => "--hard",
     };
-    git(repo_path, &["reset", flag, "--end-of-options", oid])?;
+    git(repo_path, ["reset", flag, "--end-of-options", oid])?;
     Ok(())
 }
 

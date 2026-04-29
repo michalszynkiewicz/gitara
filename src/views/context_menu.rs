@@ -303,13 +303,13 @@ fn stash_items(idx: u32, theme: &Theme) -> impl xilem::WidgetView<AppState> {
         menu_label(&format!("stash@{{{idx}}}"), theme),
         menu_separator(theme),
         menu_item("Apply", theme, move |s: &mut AppState| {
-            run_stash_op(s, idx, |p, i| crate::git::ops::stash_apply(p, i), "applied");
+            run_stash_op(s, idx, crate::git::ops::stash_apply, "applied");
         }),
         menu_item("Pop", theme, move |s: &mut AppState| {
-            run_stash_op(s, idx, |p, i| crate::git::ops::stash_pop(p, i), "popped");
+            run_stash_op(s, idx, crate::git::ops::stash_pop, "popped");
         }),
         menu_item("Drop", theme, move |s: &mut AppState| {
-            run_stash_op(s, idx, |p, i| crate::git::ops::stash_drop(p, i), "dropped");
+            run_stash_op(s, idx, crate::git::ops::stash_drop, "dropped");
         }),
     ))
     .direction(Axis::Vertical)

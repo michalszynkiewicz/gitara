@@ -226,6 +226,7 @@ where
         let common = new_len.min(prev_len);
 
         // Rebuild children that exist in both prev and current.
+        #[allow(clippy::needless_range_loop)]
         for i in 0..common {
             let id = ViewId::new(i as u64);
             ctx.with_id(id, |ctx| {

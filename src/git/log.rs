@@ -161,6 +161,31 @@ fn split_message(raw: &[u8]) -> (String, Option<String>) {
     (subject, body)
 }
 
+fn extract_author(commit: &gix::Commit<'_>) -> (Author, OffsetDateTime) {
+    // gix exposes author via commit.author() returning a SignatureRef.
+    // In gix 0.83 the raw `time` field is a &BStr (lossless bytes);
+    // call `.time()` to parse it into a `gix_date::Time` whose
+    // `seconds` field we feed to `OffsetDateTime::from_unix_timestamp`.
+    if let Ok(sig) = commit.author() {
+        let name = sig.name.to_string();
+        let email = sig.email.to_string();
+        let date = sig
+            .time()
+            .ok()
+            .and_then(|t| OffsetDateTime::from_unix_timestamp(t.seconds).ok())
+            .unwrap_or_else(OffsetDateTime::now_utc);
+        (Author { name, email }, date)
+    } else {
+        (
+            Author {
+                name: "?".into(),
+                email: "?".into(),
+            },
+            OffsetDateTime::now_utc(),
+        )
+    }
+}
+
 #[cfg(test)]
 mod split_message_tests {
     use super::split_message;
@@ -190,30 +215,5 @@ mod split_message_tests {
     fn trailing_blank_lines_dropped() {
         let (_sub, body) = split_message(b"subj\n\nbody\n\n\n");
         assert_eq!(body.as_deref(), Some("body"));
-    }
-}
-
-fn extract_author(commit: &gix::Commit<'_>) -> (Author, OffsetDateTime) {
-    // gix exposes author via commit.author() returning a SignatureRef.
-    // In gix 0.83 the raw `time` field is a &BStr (lossless bytes);
-    // call `.time()` to parse it into a `gix_date::Time` whose
-    // `seconds` field we feed to `OffsetDateTime::from_unix_timestamp`.
-    if let Ok(sig) = commit.author() {
-        let name = sig.name.to_string();
-        let email = sig.email.to_string();
-        let date = sig
-            .time()
-            .ok()
-            .and_then(|t| OffsetDateTime::from_unix_timestamp(t.seconds).ok())
-            .unwrap_or_else(OffsetDateTime::now_utc);
-        (Author { name, email }, date)
-    } else {
-        (
-            Author {
-                name: "?".into(),
-                email: "?".into(),
-            },
-            OffsetDateTime::now_utc(),
-        )
     }
 }

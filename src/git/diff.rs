@@ -414,8 +414,8 @@ mod tests {
 
         let unstaged = unstaged_files(&repo).unwrap();
         // new.txt should NOT appear (it's fully staged); 0.txt should.
-        assert!(unstaged.iter().any(|f| f.path == PathBuf::from("0.txt")));
-        assert!(!unstaged.iter().any(|f| f.path == PathBuf::from("new.txt")));
+        assert!(unstaged.iter().any(|f| f.path == Path::new("0.txt")));
+        assert!(!unstaged.iter().any(|f| f.path == Path::new("new.txt")));
     }
 
     #[test]

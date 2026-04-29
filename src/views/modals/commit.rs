@@ -416,14 +416,10 @@ fn run_select(st: &mut AppState, path: &std::path::Path, staged: bool) {
     // Double-click detection: a second click on the same path within
     // 400ms also stages/unstages the file — same UX as the +/- button
     // but covers the whole row.
-    let is_double = match commit_state(st).and_then(|s| s.last_click.as_ref()) {
-        Some((p, t))
-            if p == path && now.duration_since(*t) < std::time::Duration::from_millis(400) =>
-        {
-            true
-        }
-        _ => false,
-    };
+    let is_double = matches!(
+        commit_state(st).and_then(|s| s.last_click.as_ref()),
+        Some((p, t)) if p == path && now.duration_since(*t) < std::time::Duration::from_millis(400)
+    );
 
     if let Some(cs) = commit_state_mut(st) {
         cs.selected_path = Some(path.to_path_buf());
