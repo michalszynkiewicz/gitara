@@ -19,7 +19,7 @@ use masonry::core::{
 use masonry::kurbo::{Point, Size};
 use masonry::vello::Scene;
 use smallvec::SmallVec;
-use tracing::{Span, trace_span};
+use tracing::{trace_span, Span};
 
 pub struct Flow {
     children: Vec<WidgetPod<dyn Widget>>,
@@ -29,7 +29,11 @@ pub struct Flow {
 
 impl Flow {
     pub fn new(children: Vec<WidgetPod<dyn Widget>>, h_gap: f64, v_gap: f64) -> Self {
-        Self { children, h_gap, v_gap }
+        Self {
+            children,
+            h_gap,
+            v_gap,
+        }
     }
 }
 
@@ -55,13 +59,7 @@ impl Widget for Flow {
         _event: &AccessEvent,
     ) {
     }
-    fn update(
-        &mut self,
-        _ctx: &mut UpdateCtx,
-        _props: &mut PropertiesMut<'_>,
-        _event: &Update,
-    ) {
-    }
+    fn update(&mut self, _ctx: &mut UpdateCtx, _props: &mut PropertiesMut<'_>, _event: &Update) {}
 
     fn register_children(&mut self, ctx: &mut RegisterCtx) {
         for child in &mut self.children {
@@ -80,10 +78,7 @@ impl Widget for Flow {
         let max_w = bc.max().width;
         // Children get the column width as their max — a child wider than
         // that is responsible for truncating itself.
-        let child_bc = BoxConstraints::new(
-            Size::ZERO,
-            Size::new(max_w, f64::INFINITY),
-        );
+        let child_bc = BoxConstraints::new(Size::ZERO, Size::new(max_w, f64::INFINITY));
 
         // First pass: measure every child.
         let mut sizes: Vec<Size> = Vec::with_capacity(self.children.len());
@@ -113,7 +108,11 @@ impl Widget for Flow {
             max_line_w = max_line_w.max(x - self.h_gap);
         }
 
-        let total_h = if self.children.is_empty() { 0.0 } else { y + line_h };
+        let total_h = if self.children.is_empty() {
+            0.0
+        } else {
+            y + line_h
+        };
         // Always claim the full bc.max().width when finite. Two cases
         // we care about:
         //   1. Tight bc (sized_box.width(N) wrapper): max == min == N.
@@ -163,7 +162,7 @@ const _: fn() = || {
 
 // --- MARK: XILEM VIEW ---
 
-use xilem::core::{DynMessage, Mut, MessageResult, View, ViewId, ViewMarker, ViewPathTracker};
+use xilem::core::{DynMessage, MessageResult, Mut, View, ViewId, ViewMarker, ViewPathTracker};
 use xilem::{AnyWidgetView, Pod, ViewCtx};
 
 /// A flow/wrap layout view. Pass child views as boxed `AnyWidgetView`s
@@ -177,7 +176,11 @@ where
     State: 'static,
     Action: 'static,
 {
-    FlowView { children, h_gap, v_gap }
+    FlowView {
+        children,
+        h_gap,
+        v_gap,
+    }
 }
 
 #[must_use = "View values do nothing unless provided to Xilem."]
@@ -195,7 +198,8 @@ where
     Action: 'static,
 {
     type Element = Pod<Flow>;
-    type ViewState = Vec<<Box<AnyWidgetView<State, Action>> as View<State, Action, ViewCtx>>::ViewState>;
+    type ViewState =
+        Vec<<Box<AnyWidgetView<State, Action>> as View<State, Action, ViewCtx>>::ViewState>;
 
     fn build(&self, ctx: &mut ViewCtx) -> (Self::Element, Self::ViewState) {
         let mut child_pods: Vec<WidgetPod<dyn Widget>> = Vec::with_capacity(self.children.len());

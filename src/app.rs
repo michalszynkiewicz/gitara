@@ -6,24 +6,32 @@ use crate::theme::{Theme, ThemeMode};
 use crate::views;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum View { History, Reflog }
+pub enum View {
+    History,
+    Reflog,
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct Selection {
-    pub primary: Option<String>,  // oid of last-clicked
-    pub set: Vec<String>,         // all selected
-    pub anchor: Option<String>,   // for shift-click range
+    pub primary: Option<String>, // oid of last-clicked
+    pub set: Vec<String>,        // all selected
+    pub anchor: Option<String>,  // for shift-click range
 }
 
 #[derive(Clone, Debug)]
 pub struct InspectorState {
     pub collapsed: bool,
-    pub width: f64,        // 280..=720
+    pub width: f64, // 280..=720
     pub tab: InspectorTab,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum InspectorTab { Changes, Diff, Files, Details }
+pub enum InspectorTab {
+    Changes,
+    Diff,
+    Files,
+    Details,
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct BranchModalState {
@@ -129,7 +137,8 @@ impl CommitModalState {
         // diff_index_to_workdir as zero-hunk entries, so try a tracked
         // change first.
         let pick_tracked = |files: &[crate::model::diff::FileChange]| {
-            files.iter()
+            files
+                .iter()
                 .find(|f| !matches!(f.status, crate::model::diff::FileStatus::Untracked))
                 .map(|f| f.path.clone())
         };
@@ -155,7 +164,7 @@ impl CommitModalState {
     /// clears.
     pub fn reload_lists(&mut self, repo_path: &std::path::Path) {
         self.unstaged = crate::git::diff::unstaged_files(repo_path).unwrap_or_default();
-        self.staged   = crate::git::diff::staged_files(repo_path).unwrap_or_default();
+        self.staged = crate::git::diff::staged_files(repo_path).unwrap_or_default();
 
         if let Some(p) = &self.selected_path {
             let on_staged = self.staged.iter().any(|f| &f.path == p);
@@ -186,9 +195,7 @@ impl CommitModalState {
             Some(p) if self.selected_staged => {
                 crate::git::diff::hunks_staged_for_path(repo_path, p).unwrap_or_default()
             }
-            Some(p) => {
-                crate::git::diff::hunks_unstaged_for_path(repo_path, p).unwrap_or_default()
-            }
+            Some(p) => crate::git::diff::hunks_unstaged_for_path(repo_path, p).unwrap_or_default(),
             None => Vec::new(),
         };
     }
@@ -222,7 +229,7 @@ pub struct AddRemoteModalState {
 
 #[derive(Clone, Debug, Default)]
 pub struct CherryPickModalState {
-    pub oid: String,        // pre-filled from selection
+    pub oid: String, // pre-filled from selection
     pub no_commit: bool,
     pub error: Option<String>,
 }
@@ -252,8 +259,8 @@ pub enum CtxMenuKind {
     Commit { oid: String },
     Branch { name: String },
     Remote { name: String },
-    Tag    { name: String },
-    Stash  { idx: u32 },
+    Tag { name: String },
+    Stash { idx: u32 },
 }
 
 #[derive(Clone, Debug)]
@@ -278,11 +285,24 @@ pub struct Toast {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ToastKind { Info, Error }
+pub enum ToastKind {
+    Info,
+    Error,
+}
 
 impl Toast {
-    pub fn info(message: String) -> Self { Self { kind: ToastKind::Info, message } }
-    pub fn error(message: String) -> Self { Self { kind: ToastKind::Error, message } }
+    pub fn info(message: String) -> Self {
+        Self {
+            kind: ToastKind::Info,
+            message,
+        }
+    }
+    pub fn error(message: String) -> Self {
+        Self {
+            kind: ToastKind::Error,
+            message,
+        }
+    }
 }
 
 pub struct AppState {
@@ -316,7 +336,10 @@ impl AppState {
         } else {
             settings.theme
         };
-        let theme = match theme_mode { ThemeMode::Light => Theme::light(), ThemeMode::Dark => Theme::dark() };
+        let theme = match theme_mode {
+            ThemeMode::Light => Theme::light(),
+            ThemeMode::Dark => Theme::dark(),
+        };
 
         // Repo-loading preference order:
         //   1. GITARA_REPO env var, if set
@@ -341,7 +364,10 @@ impl AppState {
                     (repo_view, commits, reflog, status)
                 }
                 Err(e) => {
-                    tracing::warn!("load_repo({}) failed — using mock data: {e:?}", path.display());
+                    tracing::warn!(
+                        "load_repo({}) failed — using mock data: {e:?}",
+                        path.display()
+                    );
                     let (r, c, rl) = crate::mock::seed();
                     (r, c, rl, None)
                 }
@@ -362,7 +388,10 @@ impl AppState {
                 selection.primary = Some(prefix.clone());
                 selection.set = vec![prefix.clone()];
                 selection.anchor = Some(prefix);
-            } else if let Some(c) = commits.iter().find(|c| c.oid.starts_with(&prefix) || c.short == prefix) {
+            } else if let Some(c) = commits
+                .iter()
+                .find(|c| c.oid.starts_with(&prefix) || c.short == prefix)
+            {
                 selection.primary = Some(c.oid.clone());
                 selection.set = vec![c.oid.clone()];
                 selection.anchor = Some(c.oid.clone());
@@ -371,27 +400,42 @@ impl AppState {
 
         // Compute env-var-driven modal *before* moving repo into Self.
         let modal = std::env::var("GITARA_MODAL").ok().and_then(|v| {
-            let default_remote = repo.remotes.first().map(|r| r.name.clone()).unwrap_or_default();
-            let current_branch = repo.branches.iter().find(|b| b.current)
-                .map(|b| b.name.clone()).unwrap_or_default();
+            let default_remote = repo
+                .remotes
+                .first()
+                .map(|r| r.name.clone())
+                .unwrap_or_default();
+            let current_branch = repo
+                .branches
+                .iter()
+                .find(|b| b.current)
+                .map(|b| b.name.clone())
+                .unwrap_or_default();
             match v.as_str() {
                 "commit" => Some(Modal::Commit(CommitModalState::open(&repo.path))),
-                "fetch"  => Some(Modal::Fetch(FetchModalState {
-                    remote: default_remote, prune: false, error: None, running: false,
+                "fetch" => Some(Modal::Fetch(FetchModalState {
+                    remote: default_remote,
+                    prune: false,
+                    error: None,
+                    running: false,
                 })),
-                "push"   => Some(Modal::Push(PushModalState {
+                "push" => Some(Modal::Push(PushModalState {
                     remote: default_remote,
                     target_branch: current_branch.clone(),
                     branch: current_branch,
-                    force_with_lease: false, error: None, running: false,
+                    force_with_lease: false,
+                    error: None,
+                    running: false,
                 })),
-                "branch"      => Some(Modal::Branch(BranchModalState {
-                    start_oid: selection.primary.clone()
+                "branch" => Some(Modal::Branch(BranchModalState {
+                    start_oid: selection
+                        .primary
+                        .clone()
                         .filter(|p| p != crate::views::graph::WORKING_TREE_OID),
                     ..Default::default()
                 })),
-                "merge"       => Some(Modal::Merge(MergeModalState::default())),
-                "rebase"      => Some(Modal::Rebase(RebaseModalState::default())),
+                "merge" => Some(Modal::Merge(MergeModalState::default())),
+                "rebase" => Some(Modal::Rebase(RebaseModalState::default())),
                 // "add_remote" deliberately removed — see ISSUES.md.
                 // The current implementation passes user-supplied URLs
                 // positionally to `git remote add`, which lets a URL
@@ -399,13 +443,18 @@ impl AppState {
                 // (CVE-2017-1000117 class). Disabled until the modal
                 // gains scheme-allow-list validation.
                 "cherry_pick" => Some(Modal::CherryPick(CherryPickModalState::default())),
-                "reset"       => Some(Modal::Reset(ResetModalState {
+                "reset" => Some(Modal::Reset(ResetModalState {
                     oid: selection.primary.clone().unwrap_or_default(),
                     mode: ResetMode::default(),
                     error: None,
                 })),
                 "rename_branch" => {
-                    let cur = repo.branches.iter().find(|b| b.current).map(|b| b.name.clone()).unwrap_or_default();
+                    let cur = repo
+                        .branches
+                        .iter()
+                        .find(|b| b.current)
+                        .map(|b| b.name.clone())
+                        .unwrap_or_default();
                     Some(Modal::RenameBranch(RenameBranchModalState {
                         old_name: cur.clone(),
                         new_name: cur,
@@ -413,7 +462,9 @@ impl AppState {
                     }))
                 }
                 "tag" => Some(Modal::Tag(TagModalState {
-                    oid: selection.primary.clone()
+                    oid: selection
+                        .primary
+                        .clone()
                         .filter(|p| p != crate::views::graph::WORKING_TREE_OID),
                     ..Default::default()
                 })),
@@ -423,12 +474,16 @@ impl AppState {
 
         // Optional pre-opened context menu for screenshot tests —
         // GITARA_CTX_MENU=commit pins one onto the currently selected commit.
-        let ctx_menu = std::env::var("GITARA_CTX_MENU").ok().and_then(|v| match v.as_str() {
-            "commit" => selection.primary.clone().map(|oid| CtxMenu {
-                x: 360.0, y: 180.0, kind: CtxMenuKind::Commit { oid },
-            }),
-            _ => None,
-        });
+        let ctx_menu = std::env::var("GITARA_CTX_MENU")
+            .ok()
+            .and_then(|v| match v.as_str() {
+                "commit" => selection.primary.clone().map(|oid| CtxMenu {
+                    x: 360.0,
+                    y: 180.0,
+                    kind: CtxMenuKind::Commit { oid },
+                }),
+                _ => None,
+            });
 
         Ok(Self {
             theme_mode,
@@ -446,8 +501,8 @@ impl AppState {
                     .ok()
                     .and_then(|v| match v.to_lowercase().as_str() {
                         "changes" => Some(InspectorTab::Changes),
-                        "diff"    => Some(InspectorTab::Diff),
-                        "files"   => Some(InspectorTab::Files),
+                        "diff" => Some(InspectorTab::Diff),
+                        "files" => Some(InspectorTab::Files),
                         "details" => Some(InspectorTab::Details),
                         _ => None,
                     })
@@ -475,9 +530,9 @@ impl AppState {
     /// Reload the commit log honouring the current `show_all_refs` flag.
     /// Op handlers call this after any change that might affect history.
     pub fn reload_commits(&mut self) {
-        if let Ok(commits) = crate::git::log::load_commits(
-            &self.repo.path, &self.repo, 200, self.show_all_refs,
-        ) {
+        if let Ok(commits) =
+            crate::git::log::load_commits(&self.repo.path, &self.repo, 200, self.show_all_refs)
+        {
             self.commits = commits;
         }
     }
@@ -491,22 +546,32 @@ impl AppState {
             return;
         }
         let repo_path = self.repo.path.clone();
-        if let Ok(repo) = crate::git::refs::load_repo(&repo_path) { self.repo = repo; }
+        if let Ok(repo) = crate::git::refs::load_repo(&repo_path) {
+            self.repo = repo;
+        }
         self.reload_commits();
         self.reflog = crate::git::refs::reflog(&self.repo.path).unwrap_or_default();
         self.reload_working_status();
     }
 
     pub fn toggle_theme(&mut self) {
-        self.theme_mode = match self.theme_mode { ThemeMode::Light => ThemeMode::Dark, ThemeMode::Dark => ThemeMode::Light };
-        self.theme = match self.theme_mode { ThemeMode::Light => Theme::light(), ThemeMode::Dark => Theme::dark() };
+        self.theme_mode = match self.theme_mode {
+            ThemeMode::Light => ThemeMode::Dark,
+            ThemeMode::Dark => ThemeMode::Light,
+        };
+        self.theme = match self.theme_mode {
+            ThemeMode::Light => Theme::light(),
+            ThemeMode::Dark => Theme::dark(),
+        };
     }
 }
 
 /// Root view — titlebar, toolbar, body (sidebar + graph + inspector), statusbar.
 /// Modal overlays (when `state.modal` is set) are layered on top via zstack.
 pub fn root_view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
-    use xilem::view::{flex, sized_box, zstack, Axis, CrossAxisAlignment, MainAxisAlignment, FlexExt as _, Padding};
+    use xilem::view::{
+        flex, sized_box, zstack, Axis, CrossAxisAlignment, FlexExt as _, MainAxisAlignment, Padding,
+    };
     use xilem::WidgetView as _;
 
     let theme = state.theme.clone();
@@ -546,14 +611,10 @@ pub fn root_view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
             .border(theme.border, 1.0)
     });
 
-    let body = flex((
-        sidebar_panel,
-        graph_panel.flex(1.0),
-        inspector_panel,
-    ))
-    .direction(Axis::Horizontal)
-    .cross_axis_alignment(CrossAxisAlignment::Fill)
-    .gap(0.0);
+    let body = flex((sidebar_panel, graph_panel.flex(1.0), inspector_panel))
+        .direction(Axis::Horizontal)
+        .cross_axis_alignment(CrossAxisAlignment::Fill)
+        .gap(0.0);
 
     let statusbar = sized_box(views::statusbar::view(state))
         .height(22.0)
@@ -563,7 +624,7 @@ pub fn root_view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 
     let toast: Option<_> = state.toast.as_ref().map(|t| {
         let (fg, bg) = match t.kind {
-            ToastKind::Info  => (theme.text, theme.accent_tint),
+            ToastKind::Info => (theme.text, theme.accent_tint),
             ToastKind::Error => (theme.accent_fg, theme.removed),
         };
         sized_box(
@@ -598,17 +659,11 @@ pub fn root_view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     });
 
     let main = sized_box(
-        flex((
-            titlebar,
-            toolbar,
-            body.flex(1.0),
-            toast,
-            statusbar,
-        ))
-        .direction(Axis::Vertical)
-        .cross_axis_alignment(CrossAxisAlignment::Fill)
-        .main_axis_alignment(MainAxisAlignment::Start)
-        .gap(0.0)
+        flex((titlebar, toolbar, body.flex(1.0), toast, statusbar))
+            .direction(Axis::Vertical)
+            .cross_axis_alignment(CrossAxisAlignment::Fill)
+            .main_axis_alignment(MainAxisAlignment::Start)
+            .gap(0.0),
     )
     .expand()
     .background(theme.bg);
@@ -630,6 +685,5 @@ pub fn root_view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     // TopLeft alignment so the ctx-menu's spacer-based positioning is
     // honored verbatim. `main` is full-window so alignment is moot for it,
     // and `modal` wraps its own ZStack with Center alignment.
-    zstack((main.boxed(), overlay))
-        .alignment(xilem::view::Alignment::TopLeft)
+    zstack((main.boxed(), overlay)).alignment(xilem::view::Alignment::TopLeft)
 }

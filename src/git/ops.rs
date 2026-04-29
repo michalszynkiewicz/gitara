@@ -331,9 +331,9 @@ pub fn reset(repo_path: &Path, oid: &str, mode: crate::app::ResetMode) -> anyhow
         anyhow::bail!("reset target is empty");
     }
     let flag = match mode {
-        crate::app::ResetMode::Soft  => "--soft",
+        crate::app::ResetMode::Soft => "--soft",
         crate::app::ResetMode::Mixed => "--mixed",
-        crate::app::ResetMode::Hard  => "--hard",
+        crate::app::ResetMode::Hard => "--hard",
     };
     git(repo_path, &["reset", flag, "--end-of-options", oid])?;
     Ok(())
@@ -341,11 +341,7 @@ pub fn reset(repo_path: &Path, oid: &str, mode: crate::app::ResetMode) -> anyhow
 
 /// `git cherry-pick [--no-commit] <oids>`. Centralised so the
 /// `--end-of-options` separator stays in one place.
-pub fn cherry_pick(
-    repo_path: &Path,
-    oids: &[&str],
-    no_commit: bool,
-) -> anyhow::Result<()> {
+pub fn cherry_pick(repo_path: &Path, oids: &[&str], no_commit: bool) -> anyhow::Result<()> {
     if oids.is_empty() {
         return Ok(());
     }
@@ -393,7 +389,13 @@ mod tests {
         // Use HEAD~1 — git resolves it via shell-out.
         let oid = create_branch(&repo, "back", Some("HEAD~1"), false).unwrap();
         let g = git2::Repository::open(&repo).unwrap();
-        let parent = g.head().unwrap().peel_to_commit().unwrap().parent(0).unwrap();
+        let parent = g
+            .head()
+            .unwrap()
+            .peel_to_commit()
+            .unwrap()
+            .parent(0)
+            .unwrap();
         assert_eq!(oid, parent.id().to_string());
     }
 
@@ -404,7 +406,10 @@ mod tests {
         create_branch(&repo, "dup", None, false).unwrap();
         let err = create_branch(&repo, "dup", None, false).unwrap_err();
         let msg = format!("{err:#}");
-        assert!(msg.contains("dup") || msg.contains("exists"), "unexpected err: {msg}");
+        assert!(
+            msg.contains("dup") || msg.contains("exists"),
+            "unexpected err: {msg}"
+        );
     }
 
     #[test]
@@ -483,8 +488,15 @@ mod tests {
         let repo = fixture("tag_annotated");
         seed_commits(&repo, &["a", "b", "c"]);
         let g = git2::Repository::open(&repo).unwrap();
-        let parent_oid = g.head().unwrap().peel_to_commit().unwrap()
-            .parent(0).unwrap().id().to_string();
+        let parent_oid = g
+            .head()
+            .unwrap()
+            .peel_to_commit()
+            .unwrap()
+            .parent(0)
+            .unwrap()
+            .id()
+            .to_string();
 
         create_tag(&repo, "release", Some(&parent_oid), "release notes").unwrap();
         let r = g.find_reference("refs/tags/release").unwrap();

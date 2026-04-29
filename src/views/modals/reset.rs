@@ -1,7 +1,7 @@
 //! Reset modal — `git reset {--soft|--mixed|--hard} <oid>`. Pre-filled
 //! with the commit that was right-clicked.
 
-use crate::app::{AppState, Modal, ResetMode, ResetModalState, Toast};
+use crate::app::{AppState, Modal, ResetModalState, ResetMode, Toast};
 use crate::git;
 use crate::theme::Theme;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
@@ -28,16 +28,16 @@ fn body_view(s: &ResetModalState, theme: &Theme) -> impl xilem::WidgetView<AppSt
         .weight(xilem::FontWeight::MEDIUM);
 
     let chips = flex((
-        mode_chip("soft",  ResetMode::Soft,  s.mode, theme),
+        mode_chip("soft", ResetMode::Soft, s.mode, theme),
         mode_chip("mixed", ResetMode::Mixed, s.mode, theme),
-        mode_chip("hard",  ResetMode::Hard,  s.mode, theme),
+        mode_chip("hard", ResetMode::Hard, s.mode, theme),
     ))
     .direction(Axis::Horizontal)
     .gap(6.0);
 
     // Per-mode hint that explains what the user is about to do.
     let (hint_text, hint_color) = match s.mode {
-        ResetMode::Soft  => (
+        ResetMode::Soft => (
             "keeps index + working tree — staged changes preserved",
             theme.text_muted,
         ),
@@ -45,15 +45,20 @@ fn body_view(s: &ResetModalState, theme: &Theme) -> impl xilem::WidgetView<AppSt
             "resets index, keeps working tree — changes become unstaged",
             theme.text_muted,
         ),
-        ResetMode::Hard  => (
+        ResetMode::Hard => (
             "resets index AND working tree — uncommitted changes will be lost",
             theme.warn,
         ),
     };
-    let hint = label(hint_text.to_string()).brush(hint_color).text_size(11.0);
+    let hint = label(hint_text.to_string())
+        .brush(hint_color)
+        .text_size(11.0);
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
-        Some(err) => label(err.clone()).brush(theme.removed).text_size(11.0).boxed(),
+        Some(err) => label(err.clone())
+            .brush(theme.removed)
+            .text_size(11.0)
+            .boxed(),
         None => label("").boxed(),
     };
 
@@ -79,9 +84,17 @@ fn mode_chip(
     let selected = mode == current;
     flat_button(
         xilem::view::label(text)
-            .brush(if selected { theme.accent_fg } else { theme.text })
+            .brush(if selected {
+                theme.accent_fg
+            } else {
+                theme.text
+            })
             .text_size(11.0)
-            .weight(if selected { xilem::FontWeight::MEDIUM } else { xilem::FontWeight::NORMAL }),
+            .weight(if selected {
+                xilem::FontWeight::MEDIUM
+            } else {
+                xilem::FontWeight::NORMAL
+            }),
         FlatStyle {
             idle_bg: if selected { Some(theme.accent) } else { None },
             hover_bg: theme.bg_hover,
@@ -92,7 +105,10 @@ fn mode_chip(
         },
         selected,
         move |st: &mut AppState| {
-            if let Some(rs) = state_mut(st) { rs.mode = mode; rs.error = None; }
+            if let Some(rs) = state_mut(st) {
+                rs.mode = mode;
+                rs.error = None;
+            }
         },
     )
 }
@@ -104,11 +120,15 @@ fn run_reset(st: &mut AppState) {
     };
     let repo_path = st.repo.path.clone();
     if crate::app::is_demo_repo(&repo_path) {
-        if let Some(s) = state_mut(st) { s.error = Some("demo mode".into()); }
+        if let Some(s) = state_mut(st) {
+            s.error = Some("demo mode".into());
+        }
         return;
     }
     if oid.is_empty() {
-        if let Some(s) = state_mut(st) { s.error = Some("no target commit".into()); }
+        if let Some(s) = state_mut(st) {
+            s.error = Some("no target commit".into());
+        }
         return;
     }
 
@@ -117,23 +137,31 @@ fn run_reset(st: &mut AppState) {
             st.refresh_all();
             let short = &oid[..oid.len().min(7)];
             let mode_str = match mode {
-                ResetMode::Soft  => "soft",
+                ResetMode::Soft => "soft",
                 ResetMode::Mixed => "mixed",
-                ResetMode::Hard  => "hard",
+                ResetMode::Hard => "hard",
             };
             st.toast = Some(Toast::info(format!("reset --{mode_str} to {short}")));
             st.modal = None;
         }
         Err(e) => {
-            if let Some(s) = state_mut(st) { s.error = Some(format!("{e:#}")); }
+            if let Some(s) = state_mut(st) {
+                s.error = Some(format!("{e:#}"));
+            }
         }
     }
 }
 
 fn state_get(state: &AppState) -> Option<&ResetModalState> {
-    match &state.modal { Some(Modal::Reset(s)) => Some(s), _ => None }
+    match &state.modal {
+        Some(Modal::Reset(s)) => Some(s),
+        _ => None,
+    }
 }
 
 fn state_mut(state: &mut AppState) -> Option<&mut ResetModalState> {
-    match &mut state.modal { Some(Modal::Reset(s)) => Some(s), _ => None }
+    match &mut state.modal {
+        Some(Modal::Reset(s)) => Some(s),
+        _ => None,
+    }
 }

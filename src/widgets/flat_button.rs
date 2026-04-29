@@ -9,16 +9,16 @@ use std::any::TypeId;
 
 use accesskit::{Node, Role};
 use masonry::core::{
-    AccessCtx, AccessEvent, Action, BoxConstraints, EventCtx, LayoutCtx, PaintCtx,
-    PointerEvent, PropertiesMut, PropertiesRef, QueryCtx, RegisterCtx, TextEvent, Update,
-    UpdateCtx, Widget, WidgetId, WidgetMut, WidgetPod,
+    AccessCtx, AccessEvent, Action, BoxConstraints, EventCtx, LayoutCtx, PaintCtx, PointerEvent,
+    PropertiesMut, PropertiesRef, QueryCtx, RegisterCtx, TextEvent, Update, UpdateCtx, Widget,
+    WidgetId, WidgetMut, WidgetPod,
 };
 use masonry::kurbo::{Affine, Point, RoundedRect, Size};
 use masonry::peniko::{Color, Fill};
 use masonry::vello::Scene;
 use masonry::widgets::Label;
-use smallvec::{SmallVec, smallvec};
-use tracing::{Span, trace_span};
+use smallvec::{smallvec, SmallVec};
+use tracing::{trace_span, Span};
 
 // --- MARK: STYLE ---
 
@@ -55,7 +55,11 @@ pub struct FlatButton {
 
 impl FlatButton {
     pub fn from_label_pod(label: WidgetPod<Label>, style: FlatStyle, active: bool) -> Self {
-        Self { label, style, active }
+        Self {
+            label,
+            style,
+            active,
+        }
     }
 
     pub fn label_mut<'t>(this: &'t mut WidgetMut<'_, Self>) -> WidgetMut<'t, Label> {
@@ -182,12 +186,7 @@ impl Widget for FlatButton {
         Role::Button
     }
 
-    fn accessibility(
-        &mut self,
-        _ctx: &mut AccessCtx,
-        _props: &PropertiesRef<'_>,
-        node: &mut Node,
-    ) {
+    fn accessibility(&mut self, _ctx: &mut AccessCtx, _props: &PropertiesRef<'_>, node: &mut Node) {
         node.add_action(accesskit::Action::Click);
     }
 
@@ -202,7 +201,7 @@ impl Widget for FlatButton {
 
 // --- MARK: XILEM VIEW ---
 
-use xilem::core::{DynMessage, Mut, MessageResult, View, ViewId, ViewMarker, ViewPathTracker};
+use xilem::core::{DynMessage, MessageResult, Mut, View, ViewId, ViewMarker, ViewPathTracker};
 use xilem::{Pod, ViewCtx};
 
 /// Build a flat button view. `label` may be a plain string or a pre-styled
@@ -309,9 +308,7 @@ where
         app_state: &mut State,
     ) -> MessageResult<Action> {
         match id_path.split_first() {
-            Some((&LABEL_VIEW_ID, rest)) => {
-                self.label.message(&mut (), rest, message, app_state)
-            }
+            Some((&LABEL_VIEW_ID, rest)) => self.label.message(&mut (), rest, message, app_state),
             None => match message.downcast::<masonry::core::Action>() {
                 Ok(action) => {
                     if matches!(*action, masonry::core::Action::ButtonPressed(_)) {

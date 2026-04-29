@@ -72,7 +72,10 @@ fn body_view(s: &TagModalState, theme: &Theme) -> impl xilem::WidgetView<AppStat
     .padding(Padding::from_vh(4.0, 8.0));
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
-        Some(err) => label(err.clone()).brush(theme.removed).text_size(11.0).boxed(),
+        Some(err) => label(err.clone())
+            .brush(theme.removed)
+            .text_size(11.0)
+            .boxed(),
         None => label("").boxed(),
     };
 
@@ -92,16 +95,19 @@ fn body_view(s: &TagModalState, theme: &Theme) -> impl xilem::WidgetView<AppStat
 
 fn run_create(st: &mut AppState) {
     let (name, message, oid) = match tag_state(st) {
-        Some(ts) => (ts.name.trim().to_string(), ts.message.clone(), ts.oid.clone()),
+        Some(ts) => (
+            ts.name.trim().to_string(),
+            ts.message.clone(),
+            ts.oid.clone(),
+        ),
         None => return,
     };
 
     let repo_path = st.repo.path.clone();
     if crate::app::is_demo_repo(&repo_path) {
         if let Some(ts) = tag_state_mut(st) {
-            ts.error = Some(
-                "demo mode — start gitara from a real repo or set GITARA_REPO=<path>".into(),
-            );
+            ts.error =
+                Some("demo mode — start gitara from a real repo or set GITARA_REPO=<path>".into());
         }
         return;
     }

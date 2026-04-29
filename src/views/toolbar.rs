@@ -19,33 +19,59 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
         .unwrap_or(false);
 
     flex((
-        tb(theme, "Commit", primary_is_push == false, |s: &mut AppState| {
-            let st = crate::app::CommitModalState::open(&s.repo.path);
-            s.modal = Some(Modal::Commit(st));
-        }),
-        tb(theme, "Fetch",  false, |s: &mut AppState| {
+        tb(
+            theme,
+            "Commit",
+            primary_is_push == false,
+            |s: &mut AppState| {
+                let st = crate::app::CommitModalState::open(&s.repo.path);
+                s.modal = Some(Modal::Commit(st));
+            },
+        ),
+        tb(theme, "Fetch", false, |s: &mut AppState| {
             // Default to first remote in the repo (usually "origin").
-            let remote = s.repo.remotes.first().map(|r| r.name.clone()).unwrap_or_default();
+            let remote = s
+                .repo
+                .remotes
+                .first()
+                .map(|r| r.name.clone())
+                .unwrap_or_default();
             s.modal = Some(Modal::Fetch(crate::app::FetchModalState {
-                remote, prune: false, error: None, running: false,
+                remote,
+                prune: false,
+                error: None,
+                running: false,
             }));
         }),
-        tb(theme, "Pull",   false, |s: &mut AppState| run_pull(s)),
-        tb(theme, "Push",   primary_is_push, |s: &mut AppState| {
-            let remote = s.repo.remotes.first().map(|r| r.name.clone()).unwrap_or_default();
-            let branch = s.repo.branches.iter().find(|b| b.current).map(|b| b.name.clone()).unwrap_or_default();
+        tb(theme, "Pull", false, |s: &mut AppState| run_pull(s)),
+        tb(theme, "Push", primary_is_push, |s: &mut AppState| {
+            let remote = s
+                .repo
+                .remotes
+                .first()
+                .map(|r| r.name.clone())
+                .unwrap_or_default();
+            let branch = s
+                .repo
+                .branches
+                .iter()
+                .find(|b| b.current)
+                .map(|b| b.name.clone())
+                .unwrap_or_default();
             s.modal = Some(Modal::Push(crate::app::PushModalState {
                 remote,
                 target_branch: branch.clone(),
                 branch,
-                force_with_lease: false, error: None, running: false,
+                force_with_lease: false,
+                error: None,
+                running: false,
             }));
         }),
         FlexSpacer::Fixed(12.0),
         tb(theme, "Branch", false, |s: &mut AppState| {
             s.modal = Some(Modal::Branch(crate::app::BranchModalState::default()));
         }),
-        tb(theme, "Merge",  false, |s: &mut AppState| {
+        tb(theme, "Merge", false, |s: &mut AppState| {
             s.modal = Some(Modal::Merge(crate::app::MergeModalState::default()));
         }),
         tb(theme, "Rebase", false, |s: &mut AppState| {
@@ -62,8 +88,12 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     .gap(2.0)
 }
 
-fn tb<F>(theme: &Theme, text: &'static str, primary: bool, cb: F)
-    -> impl xilem::WidgetView<AppState>
+fn tb<F>(
+    theme: &Theme,
+    text: &'static str,
+    primary: bool,
+    cb: F,
+) -> impl xilem::WidgetView<AppState>
 where
     F: Fn(&mut AppState) + Send + Sync + 'static,
 {
@@ -73,7 +103,11 @@ where
         lbl,
         FlatStyle {
             idle_bg: if primary { Some(theme.accent) } else { None },
-            hover_bg: if primary { theme.accent_hover } else { theme.bg_hover },
+            hover_bg: if primary {
+                theme.accent_hover
+            } else {
+                theme.bg_hover
+            },
             active_bg: None,
             radius: 4.0,
             padding_v: 5.0,

@@ -4,14 +4,16 @@ use crate::app::{AppState, InspectorTab};
 use crate::model::commit::Commit;
 use crate::theme::Theme;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
-use xilem::view::{flex, label, portal, sized_box, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer, Padding};
+use xilem::view::{
+    flex, label, portal, sized_box, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer, Padding,
+};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     let body = match state.inspector.tab {
         InspectorTab::Changes => changes(state).boxed(),
-        InspectorTab::Diff    => diff(state).boxed(),
-        InspectorTab::Files   => files(state).boxed(),
+        InspectorTab::Diff => diff(state).boxed(),
+        InspectorTab::Files => files(state).boxed(),
         InspectorTab::Details => details(state).boxed(),
     };
 
@@ -22,22 +24,37 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
         // Tab strip
         sized_box(
             flex((
-                itab(&theme, "Changes", current == InspectorTab::Changes,
-                     |s: &mut AppState| s.inspector.tab = InspectorTab::Changes),
-                itab(&theme, "Diff",    current == InspectorTab::Diff,
-                     |s: &mut AppState| s.inspector.tab = InspectorTab::Diff),
-                itab(&theme, "Files",   current == InspectorTab::Files,
-                     |s: &mut AppState| s.inspector.tab = InspectorTab::Files),
-                itab(&theme, "Details", current == InspectorTab::Details,
-                     |s: &mut AppState| s.inspector.tab = InspectorTab::Details),
+                itab(
+                    &theme,
+                    "Changes",
+                    current == InspectorTab::Changes,
+                    |s: &mut AppState| s.inspector.tab = InspectorTab::Changes,
+                ),
+                itab(
+                    &theme,
+                    "Diff",
+                    current == InspectorTab::Diff,
+                    |s: &mut AppState| s.inspector.tab = InspectorTab::Diff,
+                ),
+                itab(
+                    &theme,
+                    "Files",
+                    current == InspectorTab::Files,
+                    |s: &mut AppState| s.inspector.tab = InspectorTab::Files,
+                ),
+                itab(
+                    &theme,
+                    "Details",
+                    current == InspectorTab::Details,
+                    |s: &mut AppState| s.inspector.tab = InspectorTab::Details,
+                ),
                 FlexSpacer::Flex(1.0),
             ))
             .direction(Axis::Horizontal)
-            .gap(2.0)
+            .gap(2.0),
         )
         .expand_width()
         .padding(Padding::from_vh(6.0, 10.0)),
-
         // Wrap the body in a Portal so long diffs/file lists scroll within
         // the inspector pane instead of overflowing it.
         portal(body).flex(1.0),
@@ -47,12 +64,20 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     .gap(0.0)
 }
 
-fn itab<F>(theme: &Theme, text: &'static str, selected: bool, cb: F)
-    -> impl xilem::WidgetView<AppState>
+fn itab<F>(
+    theme: &Theme,
+    text: &'static str,
+    selected: bool,
+    cb: F,
+) -> impl xilem::WidgetView<AppState>
 where
     F: Fn(&mut AppState) + Send + Sync + 'static,
 {
-    let fg = if selected { theme.text } else { theme.text_muted };
+    let fg = if selected {
+        theme.text
+    } else {
+        theme.text_muted
+    };
     flat_button(
         xilem::view::label(text).brush(fg).text_size(12.0),
         FlatStyle {
@@ -69,7 +94,10 @@ where
 }
 
 fn selected_commit(state: &AppState) -> Option<&Commit> {
-    let primary = state.selection.primary.as_ref()
+    let primary = state
+        .selection
+        .primary
+        .as_ref()
         .or(state.commits.first().map(|c| &c.oid))?;
     if primary == crate::views::graph::WORKING_TREE_OID {
         return None;
@@ -98,7 +126,9 @@ fn details(state: &AppState) -> impl xilem::WidgetView<AppState> {
             .join("   ")
     };
 
-    let tags: Vec<String> = c.refs.iter()
+    let tags: Vec<String> = c
+        .refs
+        .iter()
         .filter_map(|r| match r {
             crate::model::commit::RefChip::Tag { name, .. } => Some(name.clone()),
             _ => None,
@@ -131,8 +161,8 @@ fn details(state: &AppState) -> impl xilem::WidgetView<AppState> {
             FlexSpacer::Fixed(14.0),
             divider(&theme),
             FlexSpacer::Fixed(12.0),
-            kv("commit",  c.oid.clone(),    &theme),
-            kv("parents", parents,          &theme),
+            kv("commit", c.oid.clone(), &theme),
+            kv("parents", parents, &theme),
             tags_row,
             kv_brushed("signed", sig_text.to_string(), sig_color, &theme),
             FlexSpacer::Fixed(14.0),
@@ -147,7 +177,7 @@ fn details(state: &AppState) -> impl xilem::WidgetView<AppState> {
         ))
         .direction(Axis::Vertical)
         .cross_axis_alignment(CrossAxisAlignment::Start)
-        .gap(0.0)
+        .gap(0.0),
     )
     .expand_width()
     .padding(Padding::from_vh(14.0, 16.0))
@@ -165,7 +195,7 @@ fn kv_brushed(
             label(key)
                 .brush(theme.text_dim)
                 .text_size(10.0)
-                .weight(xilem::FontWeight::MEDIUM)
+                .weight(xilem::FontWeight::MEDIUM),
         )
         .width(60.0),
         label(value).brush(value_brush).text_size(12.0),
@@ -181,12 +211,10 @@ fn kv(key: &'static str, value: String, theme: &Theme) -> impl xilem::WidgetView
             label(key)
                 .brush(theme.text_dim)
                 .text_size(10.0)
-                .weight(xilem::FontWeight::MEDIUM)
+                .weight(xilem::FontWeight::MEDIUM),
         )
         .width(60.0),
-        label(value)
-            .brush(theme.text)
-            .text_size(12.0),
+        label(value).brush(theme.text).text_size(12.0),
     ))
     .direction(Axis::Horizontal)
     .cross_axis_alignment(CrossAxisAlignment::Center)
@@ -269,20 +297,17 @@ fn files_list(
     .padding(Padding::from_vh(10.0, 14.0))
 }
 
-fn file_row(
-    f: &crate::model::diff::FileChange,
-    theme: &Theme,
-) -> impl xilem::WidgetView<AppState> {
+fn file_row(f: &crate::model::diff::FileChange, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     use crate::model::diff::FileStatus;
     let (letter, color) = match f.status {
-        FileStatus::Added      => ("A", theme.added),
-        FileStatus::Deleted    => ("D", theme.removed),
-        FileStatus::Modified   => ("M", theme.warn),
-        FileStatus::Renamed    => ("R", theme.info),
-        FileStatus::Copied     => ("C", theme.info),
+        FileStatus::Added => ("A", theme.added),
+        FileStatus::Deleted => ("D", theme.removed),
+        FileStatus::Modified => ("M", theme.warn),
+        FileStatus::Renamed => ("R", theme.info),
+        FileStatus::Copied => ("C", theme.info),
         FileStatus::TypeChange => ("T", theme.warn),
         FileStatus::Conflicted => ("!", theme.removed),
-        FileStatus::Untracked  => ("?", theme.text_dim),
+        FileStatus::Untracked => ("?", theme.text_dim),
     };
 
     let path_str = f.path.display().to_string();
@@ -334,7 +359,11 @@ fn diff(state: &AppState) -> impl xilem::WidgetView<AppState> {
 }
 
 fn placeholder_text(text: &str, theme: &Theme) -> impl xilem::WidgetView<AppState> {
-    sized_box(label(text.to_string()).brush(theme.text_dim).text_size(12.0))
-        .expand()
-        .padding(Padding::from_vh(14.0, 16.0))
+    sized_box(
+        label(text.to_string())
+            .brush(theme.text_dim)
+            .text_size(12.0),
+    )
+    .expand()
+    .padding(Padding::from_vh(14.0, 16.0))
 }

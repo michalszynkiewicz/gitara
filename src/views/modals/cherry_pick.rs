@@ -17,7 +17,9 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
         if let Some(sel) = &state.selection.primary {
             if sel != crate::views::graph::WORKING_TREE_OID {
                 s.oid = sel.clone();
-                if let Some(cs) = state_mut(state) { cs.oid = s.oid.clone(); }
+                if let Some(cs) = state_mut(state) {
+                    cs.oid = s.oid.clone();
+                }
             }
         }
     }
@@ -35,10 +37,16 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 }
 
 fn body_view(s: &CherryPickModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
-    let oid_label = label("commit").brush(theme.text_dim).text_size(10.0).weight(xilem::FontWeight::MEDIUM);
+    let oid_label = label("commit")
+        .brush(theme.text_dim)
+        .text_size(10.0)
+        .weight(xilem::FontWeight::MEDIUM);
     let oid_input = sized_box(
         textbox(s.oid.clone(), |st: &mut AppState, new| {
-            if let Some(cs) = state_mut(st) { cs.oid = new; cs.error = None; }
+            if let Some(cs) = state_mut(st) {
+                cs.oid = new;
+                cs.error = None;
+            }
         })
         .on_enter(|st: &mut AppState, _| run_cherry_pick(st))
         .brush(super::input_text()),
@@ -50,10 +58,18 @@ fn body_view(s: &CherryPickModalState, theme: &Theme) -> impl xilem::WidgetView<
     .rounded(4.0)
     .padding(Padding::from_vh(4.0, 8.0));
 
-    let no_commit_label = if s.no_commit { "✓ stage only (no commit)" } else { "stage only (no commit)" };
+    let no_commit_label = if s.no_commit {
+        "✓ stage only (no commit)"
+    } else {
+        "stage only (no commit)"
+    };
     let no_commit_btn = flat_button(
         xilem::view::label(no_commit_label)
-            .brush(if s.no_commit { theme.accent } else { theme.text_muted })
+            .brush(if s.no_commit {
+                theme.accent
+            } else {
+                theme.text_muted
+            })
             .text_size(11.0),
         FlatStyle {
             idle_bg: None,
@@ -65,12 +81,17 @@ fn body_view(s: &CherryPickModalState, theme: &Theme) -> impl xilem::WidgetView<
         },
         s.no_commit,
         |st: &mut AppState| {
-            if let Some(cs) = state_mut(st) { cs.no_commit = !cs.no_commit; }
+            if let Some(cs) = state_mut(st) {
+                cs.no_commit = !cs.no_commit;
+            }
         },
     );
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
-        Some(err) => label(err.clone()).brush(theme.removed).text_size(11.0).boxed(),
+        Some(err) => label(err.clone())
+            .brush(theme.removed)
+            .text_size(11.0)
+            .boxed(),
         None => label("").boxed(),
     };
 
@@ -94,11 +115,15 @@ fn run_cherry_pick(st: &mut AppState) {
     };
     let repo_path = st.repo.path.clone();
     if crate::app::is_demo_repo(&repo_path) {
-        if let Some(s) = state_mut(st) { s.error = Some("demo mode".into()); }
+        if let Some(s) = state_mut(st) {
+            s.error = Some("demo mode".into());
+        }
         return;
     }
     if oid.is_empty() {
-        if let Some(s) = state_mut(st) { s.error = Some("no commit selected".into()); }
+        if let Some(s) = state_mut(st) {
+            s.error = Some("no commit selected".into());
+        }
         return;
     }
 
@@ -112,15 +137,23 @@ fn run_cherry_pick(st: &mut AppState) {
             st.modal = None;
         }
         Err(e) => {
-            if let Some(s) = state_mut(st) { s.error = Some(format!("{e:#}")); }
+            if let Some(s) = state_mut(st) {
+                s.error = Some(format!("{e:#}"));
+            }
         }
     }
 }
 
 fn state_get(state: &AppState) -> Option<&CherryPickModalState> {
-    match &state.modal { Some(Modal::CherryPick(s)) => Some(s), _ => None }
+    match &state.modal {
+        Some(Modal::CherryPick(s)) => Some(s),
+        _ => None,
+    }
 }
 
 fn state_mut(state: &mut AppState) -> Option<&mut CherryPickModalState> {
-    match &mut state.modal { Some(Modal::CherryPick(s)) => Some(s), _ => None }
+    match &mut state.modal {
+        Some(Modal::CherryPick(s)) => Some(s),
+        _ => None,
+    }
 }

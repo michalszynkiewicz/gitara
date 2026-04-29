@@ -14,8 +14,8 @@ use masonry::core::{
 use masonry::kurbo::{Affine, BezPath, Circle, Line, Point, Size, Stroke};
 use masonry::peniko::{Color, Fill};
 use masonry::vello::Scene;
-use smallvec::{SmallVec, smallvec};
-use tracing::{Span, trace_span};
+use smallvec::{smallvec, SmallVec};
+use tracing::{trace_span, Span};
 
 use crate::graph_layout::RowLayout;
 
@@ -84,13 +84,7 @@ impl Widget for GraphGutter {
         _event: &AccessEvent,
     ) {
     }
-    fn update(
-        &mut self,
-        _ctx: &mut UpdateCtx,
-        _props: &mut PropertiesMut<'_>,
-        _event: &Update,
-    ) {
-    }
+    fn update(&mut self, _ctx: &mut UpdateCtx, _props: &mut PropertiesMut<'_>, _event: &Update) {}
     fn register_children(&mut self, _ctx: &mut RegisterCtx) {}
     fn property_changed(&mut self, _ctx: &mut UpdateCtx, _property_type: TypeId) {}
 
@@ -171,21 +165,37 @@ impl Widget for GraphGutter {
         // short cubic so the diagonal eases into the vertical lanes
         // above and below — gitk-style.
         for &col in &row.terminating {
-            if col == row.column { continue; }
+            if col == row.column {
+                continue;
+            }
             let color = self.lane_color(col);
             let from = Point::new(Self::lane_x(col), 0.0);
             let to = Point::new(own_x, center_y);
-            scene.stroke(&stroke, Affine::IDENTITY, color, None, &diag_curve(from, to));
+            scene.stroke(
+                &stroke,
+                Affine::IDENTITY,
+                color,
+                None,
+                &diag_curve(from, to),
+            );
         }
 
         // Extra-parent (merge spawn) lanes: line from (own_x, center_y) to
         // (col_x, row_h), continuing down on the new lane.
         for &col in &row.extra_parent_columns {
-            if col == row.column { continue; }
+            if col == row.column {
+                continue;
+            }
             let color = self.lane_color(col);
             let from = Point::new(own_x, center_y);
             let to = Point::new(Self::lane_x(col), row_h);
-            scene.stroke(&stroke, Affine::IDENTITY, color, None, &diag_curve(from, to));
+            scene.stroke(
+                &stroke,
+                Affine::IDENTITY,
+                color,
+                None,
+                &diag_curve(from, to),
+            );
         }
 
         // Node: filled circle in the lane colour, with a bg-coloured halo
@@ -244,7 +254,7 @@ fn diag_curve(from: Point, to: Point) -> BezPath {
 
 // --- MARK: XILEM VIEW ---
 
-use xilem::core::{DynMessage, Mut, MessageResult, View, ViewId, ViewMarker};
+use xilem::core::{DynMessage, MessageResult, Mut, View, ViewId, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 pub fn graph_gutter<State, Action>(style: GutterStyle) -> GraphGutterView<State, Action> {

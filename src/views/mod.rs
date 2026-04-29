@@ -4,12 +4,12 @@
 //! event wiring; filling in every visual detail against your pinned Xilem
 //! version is part of Phase 1–2 (see `BUILD_PLAN` in the README).
 
-pub mod titlebar;
-pub mod toolbar;
-pub mod statusbar;
-pub mod sidebar;
+pub mod context_menu;
+pub mod diff_view;
 pub mod graph;
 pub mod inspector;
-pub mod diff_view;
-pub mod context_menu;
 pub mod modals;
+pub mod sidebar;
+pub mod statusbar;
+pub mod titlebar;
+pub mod toolbar;

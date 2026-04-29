@@ -18,8 +18,8 @@ use masonry::core::{
 use masonry::kurbo::{Affine, Point, RoundedRect, Size};
 use masonry::peniko::{Color, Fill};
 use masonry::vello::Scene;
-use smallvec::{SmallVec, smallvec};
-use tracing::{Span, trace_span};
+use smallvec::{smallvec, SmallVec};
+use tracing::{trace_span, Span};
 
 // --- MARK: STYLE ---
 
@@ -50,7 +50,11 @@ pub struct ClickableBox {
 
 impl ClickableBox {
     pub fn new_pod(child: WidgetPod<dyn Widget>, style: ClickStyle, selected: bool) -> Self {
-        Self { child, style, selected }
+        Self {
+            child,
+            style,
+            selected,
+        }
     }
 
     pub fn child_mut<'t>(this: &'t mut WidgetMut<'_, Self>) -> WidgetMut<'t, dyn Widget> {
@@ -223,7 +227,7 @@ const _: fn() = || {
 // --- MARK: XILEM VIEW ---
 
 use std::marker::PhantomData;
-use xilem::core::{DynMessage, Mut, MessageResult, View, ViewId, ViewMarker, ViewPathTracker};
+use xilem::core::{DynMessage, MessageResult, Mut, View, ViewId, ViewMarker, ViewPathTracker};
 use xilem::{Pod, ViewCtx, WidgetView};
 
 const CHILD_VIEW_ID: ViewId = ViewId::new(0);
@@ -261,8 +265,7 @@ pub struct ClickableBoxView<V, F, State, Action> {
 
 impl<V, F, State, Action> ViewMarker for ClickableBoxView<V, F, State, Action> {}
 
-impl<V, F, State, Action> View<State, Action, ViewCtx>
-    for ClickableBoxView<V, F, State, Action>
+impl<V, F, State, Action> View<State, Action, ViewCtx> for ClickableBoxView<V, F, State, Action>
 where
     V: WidgetView<State, Action>,
     F: Fn(&mut State, ClickInfo) -> Action + Send + Sync + 'static,
@@ -299,7 +302,8 @@ where
         }
         ctx.with_id(CHILD_VIEW_ID, |ctx| {
             let mut child = ClickableBox::child_mut(&mut element);
-            self.inner.rebuild(&prev.inner, view_state, ctx, child.downcast());
+            self.inner
+                .rebuild(&prev.inner, view_state, ctx, child.downcast());
         });
     }
 
@@ -329,12 +333,14 @@ where
             }
             None => match message.downcast::<masonry::core::Action>() {
                 Ok(action) => match *action {
-                    masonry::core::Action::Other(payload) => match payload.downcast::<ClickInfo>() {
-                        Ok(info) => MessageResult::Action((self.callback)(app_state, *info)),
-                        Err(_) => MessageResult::Stale(DynMessage(Box::new(
-                            masonry::core::Action::Other(Box::new(())),
-                        ))),
-                    },
+                    masonry::core::Action::Other(payload) => {
+                        match payload.downcast::<ClickInfo>() {
+                            Ok(info) => MessageResult::Action((self.callback)(app_state, *info)),
+                            Err(_) => MessageResult::Stale(DynMessage(Box::new(
+                                masonry::core::Action::Other(Box::new(())),
+                            ))),
+                        }
+                    }
                     other => MessageResult::Stale(DynMessage(Box::new(other))),
                 },
                 Err(m) => MessageResult::Stale(m),

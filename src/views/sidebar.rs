@@ -6,7 +6,9 @@ use crate::app::{AppState, CtxMenu, CtxMenuKind};
 use crate::theme::Theme;
 use crate::widgets::clickable_box::{clickable_box, ClickInfo, ClickStyle};
 use masonry::core::PointerButton;
-use xilem::view::{flex, label, sized_box, Axis, CrossAxisAlignment, MainAxisAlignment, FlexSpacer, Label, Padding};
+use xilem::view::{
+    flex, label, sized_box, Axis, CrossAxisAlignment, FlexSpacer, Label, MainAxisAlignment, Padding,
+};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -14,17 +16,16 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 
     flex((
         section_header("BRANCHES", &theme),
-        flex(branch_rows(state, &theme)).direction(Axis::Vertical).gap(0.0),
+        flex(branch_rows(state, &theme))
+            .direction(Axis::Vertical)
+            .gap(0.0),
         FlexSpacer::Fixed(12.0),
-
         section_header("REMOTES", &theme),
         flex(remote_rows(state)).direction(Axis::Vertical).gap(2.0),
         FlexSpacer::Fixed(12.0),
-
         section_header("TAGS", &theme),
         flex(tag_rows(state)).direction(Axis::Vertical).gap(2.0),
         FlexSpacer::Fixed(12.0),
-
         section_header("STASHES", &theme),
         flex(stash_rows(state)).direction(Axis::Vertical).gap(2.0),
     ))
@@ -41,10 +42,7 @@ fn section_header(title: &'static str, theme: &Theme) -> Label {
         .weight(xilem::FontWeight::MEDIUM)
 }
 
-fn branch_rows(
-    state: &AppState,
-    theme: &Theme,
-) -> Vec<Box<xilem::AnyWidgetView<AppState>>> {
+fn branch_rows(state: &AppState, theme: &Theme) -> Vec<Box<xilem::AnyWidgetView<AppState>>> {
     state
         .repo
         .branches
@@ -83,7 +81,9 @@ fn branch_rows(
                         st.ctx_menu = Some(CtxMenu {
                             x: info.x,
                             y: info.y,
-                            kind: CtxMenuKind::Branch { name: name_for_cb.clone() },
+                            kind: CtxMenuKind::Branch {
+                                name: name_for_cb.clone(),
+                            },
                         });
                     } else {
                         // Primary (or any non-Secondary) click → checkout.
@@ -91,7 +91,8 @@ fn branch_rows(
                         checkout_branch(st, &name_for_cb);
                     }
                 },
-            ).boxed()
+            )
+            .boxed()
         })
         .collect()
 }
@@ -121,46 +122,65 @@ fn checkout_branch(st: &mut AppState, name: &str) {
 
 fn remote_rows(state: &AppState) -> Vec<Box<xilem::AnyWidgetView<AppState>>> {
     let theme = state.theme.clone();
-    state.repo.remotes.iter().map(|r| {
-        let name = r.name.clone();
-        let lbl = label(format!("   {}", r.name)).brush(theme.text).text_size(12.0);
-        clickable_box_for_ctx_menu(
-            lbl,
-            &theme,
-            move |_info: ClickInfo| CtxMenuKind::Remote { name: name.clone() },
-            None::<fn(&mut AppState)>,
-        )
-    }).collect()
+    state
+        .repo
+        .remotes
+        .iter()
+        .map(|r| {
+            let name = r.name.clone();
+            let lbl = label(format!("   {}", r.name))
+                .brush(theme.text)
+                .text_size(12.0);
+            clickable_box_for_ctx_menu(
+                lbl,
+                &theme,
+                move |_info: ClickInfo| CtxMenuKind::Remote { name: name.clone() },
+                None::<fn(&mut AppState)>,
+            )
+        })
+        .collect()
 }
 
 fn tag_rows(state: &AppState) -> Vec<Box<xilem::AnyWidgetView<AppState>>> {
     let theme = state.theme.clone();
-    state.repo.tags.iter().map(|t| {
-        let name = t.name.clone();
-        let lbl = label(format!("   {}", t.name)).brush(theme.text).text_size(12.0);
-        clickable_box_for_ctx_menu(
-            lbl,
-            &theme,
-            move |_info: ClickInfo| CtxMenuKind::Tag { name: name.clone() },
-            None::<fn(&mut AppState)>,
-        )
-    }).collect()
+    state
+        .repo
+        .tags
+        .iter()
+        .map(|t| {
+            let name = t.name.clone();
+            let lbl = label(format!("   {}", t.name))
+                .brush(theme.text)
+                .text_size(12.0);
+            clickable_box_for_ctx_menu(
+                lbl,
+                &theme,
+                move |_info: ClickInfo| CtxMenuKind::Tag { name: name.clone() },
+                None::<fn(&mut AppState)>,
+            )
+        })
+        .collect()
 }
 
 fn stash_rows(state: &AppState) -> Vec<Box<xilem::AnyWidgetView<AppState>>> {
     let theme = state.theme.clone();
-    state.repo.stashes.iter().map(|s| {
-        let idx = s.idx;
-        let lbl = label(format!("   stash@{{{}}} · {}", s.idx, s.message))
-            .brush(theme.text_muted)
-            .text_size(12.0);
-        clickable_box_for_ctx_menu(
-            lbl,
-            &theme,
-            move |_info: ClickInfo| CtxMenuKind::Stash { idx },
-            None::<fn(&mut AppState)>,
-        )
-    }).collect()
+    state
+        .repo
+        .stashes
+        .iter()
+        .map(|s| {
+            let idx = s.idx;
+            let lbl = label(format!("   stash@{{{}}} · {}", s.idx, s.message))
+                .brush(theme.text_muted)
+                .text_size(12.0);
+            clickable_box_for_ctx_menu(
+                lbl,
+                &theme,
+                move |_info: ClickInfo| CtxMenuKind::Stash { idx },
+                None::<fn(&mut AppState)>,
+            )
+        })
+        .collect()
 }
 
 /// Helper: wrap `inner` in a ClickableBox where right-click opens a
@@ -193,11 +213,18 @@ where
         move |st: &mut AppState, info: ClickInfo| {
             if matches!(info.button, Some(PointerButton::Secondary)) {
                 let kind = kind_fn(info.clone());
-                st.ctx_menu = Some(CtxMenu { x: info.x, y: info.y, kind });
+                st.ctx_menu = Some(CtxMenu {
+                    x: info.x,
+                    y: info.y,
+                    kind,
+                });
             } else {
                 st.ctx_menu = None;
-                if let Some(f) = on_left.as_ref() { f(st); }
+                if let Some(f) = on_left.as_ref() {
+                    f(st);
+                }
             }
         },
-    ).boxed()
+    )
+    .boxed()
 }

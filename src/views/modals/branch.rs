@@ -23,13 +23,7 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
         None => "Create a branch from the current HEAD".to_string(),
     };
 
-    super::shell(
-        "New branch",
-        &subtitle,
-        body,
-        footer,
-        &theme,
-    )
+    super::shell("New branch", &subtitle, body, footer, &theme)
 }
 
 fn body_view(s: &BranchModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
@@ -56,10 +50,18 @@ fn body_view(s: &BranchModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
     .padding(Padding::from_vh(4.0, 8.0));
 
     // Checkout toggle — a small pill button that reflects current state.
-    let checkout_label = if s.checkout { "✓ check out after creating" } else { "check out after creating" };
+    let checkout_label = if s.checkout {
+        "✓ check out after creating"
+    } else {
+        "check out after creating"
+    };
     let checkout_btn = flat_button(
         xilem::view::label(checkout_label)
-            .brush(if s.checkout { theme.accent } else { theme.text_muted })
+            .brush(if s.checkout {
+                theme.accent
+            } else {
+                theme.text_muted
+            })
             .text_size(11.0),
         FlatStyle {
             idle_bg: None,
@@ -104,16 +106,19 @@ fn footer_view(theme: &Theme) -> Box<xilem::AnyWidgetView<AppState>> {
 
 fn run_create(st: &mut AppState) {
     let (name, checkout, start_oid) = match branch_state(st) {
-        Some(bs) => (bs.name.trim().to_string(), bs.checkout, bs.start_oid.clone()),
+        Some(bs) => (
+            bs.name.trim().to_string(),
+            bs.checkout,
+            bs.start_oid.clone(),
+        ),
         None => return,
     };
 
     let repo_path = st.repo.path.clone();
     if crate::app::is_demo_repo(&repo_path) {
         if let Some(bs) = branch_state_mut(st) {
-            bs.error = Some(
-                "demo mode — start gitara from a real repo or set GITARA_REPO=<path>".into(),
-            );
+            bs.error =
+                Some("demo mode — start gitara from a real repo or set GITARA_REPO=<path>".into());
         }
         return;
     }

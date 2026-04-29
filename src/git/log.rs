@@ -19,8 +19,8 @@ pub fn load_commits(
     limit: usize,
     all_refs: bool,
 ) -> anyhow::Result<Vec<Commit>> {
-    let repo = gix::discover(path)
-        .with_context(|| format!("discover git repo at {}", path.display()))?;
+    let repo =
+        gix::discover(path).with_context(|| format!("discover git repo at {}", path.display()))?;
 
     // Index ref chips by oid. Keyed by full 40-char oid so we can match on
     // each commit's own oid exactly.
@@ -28,16 +28,22 @@ pub fn load_commits(
     let head_oid: Option<String> = repo.head_id().ok().map(|id| id.to_string());
 
     for b in &repo_view.branches {
-        chips.entry(b.tip_oid.clone()).or_default().push(RefChip::Branch {
-            name: b.name.clone(),
-            current: b.current,
-        });
+        chips
+            .entry(b.tip_oid.clone())
+            .or_default()
+            .push(RefChip::Branch {
+                name: b.name.clone(),
+                current: b.current,
+            });
     }
     for r in &repo_view.remotes {
         for rb in &r.branches {
-            chips.entry(rb.tip_oid.clone()).or_default().push(RefChip::Remote {
-                name: rb.name.clone(),
-            });
+            chips
+                .entry(rb.tip_oid.clone())
+                .or_default()
+                .push(RefChip::Remote {
+                    name: rb.name.clone(),
+                });
         }
     }
     for t in &repo_view.tags {
@@ -202,6 +208,12 @@ fn extract_author(commit: &gix::Commit<'_>) -> (Author, OffsetDateTime) {
             .unwrap_or_else(OffsetDateTime::now_utc);
         (Author { name, email }, date)
     } else {
-        (Author { name: "?".into(), email: "?".into() }, OffsetDateTime::now_utc())
+        (
+            Author {
+                name: "?".into(),
+                email: "?".into(),
+            },
+            OffsetDateTime::now_utc(),
+        )
     }
 }

@@ -49,9 +49,11 @@ fn body_view(
         .brush(theme.text_dim)
         .text_size(10.0)
         .weight(xilem::FontWeight::MEDIUM);
-    let source_view = label(
-        if s.branch.is_empty() { "(no current branch)".to_string() } else { s.branch.clone() }
-    )
+    let source_view = label(if s.branch.is_empty() {
+        "(no current branch)".to_string()
+    } else {
+        s.branch.clone()
+    })
     .brush(theme.text)
     .text_size(13.0)
     .weight(xilem::FontWeight::MEDIUM);
@@ -112,10 +114,18 @@ fn body_view(
     };
 
     // ── force-with-lease toggle (unchanged from before)
-    let force_label = if s.force_with_lease { "✓ force with lease" } else { "force with lease" };
+    let force_label = if s.force_with_lease {
+        "✓ force with lease"
+    } else {
+        "force with lease"
+    };
     let force_btn = flat_button(
         xilem::view::label(force_label)
-            .brush(if s.force_with_lease { theme.warn } else { theme.text_muted })
+            .brush(if s.force_with_lease {
+                theme.warn
+            } else {
+                theme.text_muted
+            })
             .text_size(11.0),
         FlatStyle {
             idle_bg: None,
@@ -127,7 +137,9 @@ fn body_view(
         },
         s.force_with_lease,
         |st: &mut AppState| {
-            if let Some(ps) = push_state_mut(st) { ps.force_with_lease = !ps.force_with_lease; }
+            if let Some(ps) = push_state_mut(st) {
+                ps.force_with_lease = !ps.force_with_lease;
+            }
         },
     );
     let force_help = label(
@@ -139,9 +151,15 @@ fn body_view(
 
     // ── error / running banner
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match (&s.error, s.running) {
-        (Some(err), _) => label(err.clone()).brush(theme.removed).text_size(11.0).boxed(),
-        (_, true)      => label("pushing…").brush(theme.text_muted).text_size(11.0).boxed(),
-        _              => label("").boxed(),
+        (Some(err), _) => label(err.clone())
+            .brush(theme.removed)
+            .text_size(11.0)
+            .boxed(),
+        (_, true) => label("pushing…")
+            .brush(theme.text_muted)
+            .text_size(11.0)
+            .boxed(),
+        _ => label("").boxed(),
     };
 
     flex((
@@ -170,9 +188,17 @@ fn remote_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetV
     let owned = name.to_string();
     flat_button(
         xilem::view::label(name.to_string())
-            .brush(if selected { theme.accent_fg } else { theme.text })
+            .brush(if selected {
+                theme.accent_fg
+            } else {
+                theme.text
+            })
             .text_size(11.0)
-            .weight(if selected { xilem::FontWeight::MEDIUM } else { xilem::FontWeight::NORMAL }),
+            .weight(if selected {
+                xilem::FontWeight::MEDIUM
+            } else {
+                xilem::FontWeight::NORMAL
+            }),
         FlatStyle {
             idle_bg: if selected { Some(theme.accent) } else { None },
             hover_bg: theme.bg_hover,
@@ -198,7 +224,11 @@ fn target_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetV
     let owned = name.to_string();
     flat_button(
         xilem::view::label(name.to_string())
-            .brush(if selected { theme.accent_fg } else { theme.text_muted })
+            .brush(if selected {
+                theme.accent_fg
+            } else {
+                theme.text_muted
+            })
             .text_size(11.0),
         FlatStyle {
             idle_bg: if selected { Some(theme.accent) } else { None },
@@ -236,16 +266,24 @@ fn run_push(st: &mut AppState) {
         return;
     }
     if branch.is_empty() {
-        if let Some(s) = push_state_mut(st) { s.error = Some("no current branch".into()); }
+        if let Some(s) = push_state_mut(st) {
+            s.error = Some("no current branch".into());
+        }
         return;
     }
     if remote.is_empty() {
-        if let Some(s) = push_state_mut(st) { s.error = Some("no remote configured".into()); }
+        if let Some(s) = push_state_mut(st) {
+            s.error = Some("no remote configured".into());
+        }
         return;
     }
     // Empty target falls back to the source branch name (push to a
     // same-named remote branch — the common case).
-    let target = if target.is_empty() { branch.clone() } else { target };
+    let target = if target.is_empty() {
+        branch.clone()
+    } else {
+        target
+    };
 
     match git::ops::push(&repo_path, &remote, &branch, &target, force) {
         Ok(()) => {
@@ -253,15 +291,23 @@ fn run_push(st: &mut AppState) {
             st.modal = None;
         }
         Err(e) => {
-            if let Some(s) = push_state_mut(st) { s.error = Some(format!("{e:#}")); }
+            if let Some(s) = push_state_mut(st) {
+                s.error = Some(format!("{e:#}"));
+            }
         }
     }
 }
 
 fn push_state(state: &AppState) -> Option<&PushModalState> {
-    match &state.modal { Some(Modal::Push(s)) => Some(s), _ => None }
+    match &state.modal {
+        Some(Modal::Push(s)) => Some(s),
+        _ => None,
+    }
 }
 
 fn push_state_mut(state: &mut AppState) -> Option<&mut PushModalState> {
-    match &mut state.modal { Some(Modal::Push(s)) => Some(s), _ => None }
+    match &mut state.modal {
+        Some(Modal::Push(s)) => Some(s),
+        _ => None,
+    }
 }
