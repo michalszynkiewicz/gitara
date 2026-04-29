@@ -82,7 +82,12 @@ pub struct FetchModalState {
 #[derive(Clone, Debug, Default)]
 pub struct PushModalState {
     pub remote: String,
+    /// Local branch being pushed (read from HEAD when the modal opens).
     pub branch: String,
+    /// Remote branch name to push *to*. Defaults to `branch` (push to a
+    /// same-named branch) but the user can pick from existing remote
+    /// branches or type a new name.
+    pub target_branch: String,
     pub force_with_lease: bool,
     pub error: Option<String>,
     pub running: bool,
@@ -375,7 +380,9 @@ impl AppState {
                     remote: default_remote, prune: false, error: None, running: false,
                 })),
                 "push"   => Some(Modal::Push(PushModalState {
-                    remote: default_remote, branch: current_branch,
+                    remote: default_remote,
+                    target_branch: current_branch.clone(),
+                    branch: current_branch,
                     force_with_lease: false, error: None, running: false,
                 })),
                 "branch"      => Some(Modal::Branch(BranchModalState {
