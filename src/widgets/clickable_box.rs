@@ -89,16 +89,14 @@ impl Widget for ClickableBox {
         event: &PointerEvent,
     ) {
         match event {
-            PointerEvent::Down(..) => {
-                if !ctx.is_disabled() {
-                    ctx.capture_pointer();
-                    // Stop the Down from bubbling to ancestor click targets;
-                    // otherwise an outer ClickableBox would steal the capture
-                    // and our Up callback would never fire. Critical for the
-                    // context-menu pattern (menu items inside a backdrop).
-                    ctx.set_handled();
-                    ctx.request_paint_only();
-                }
+            PointerEvent::Down(..) if !ctx.is_disabled() => {
+                ctx.capture_pointer();
+                // Stop the Down from bubbling to ancestor click targets;
+                // otherwise an outer ClickableBox would steal the capture
+                // and our Up callback would never fire. Critical for the
+                // context-menu pattern (menu items inside a backdrop).
+                ctx.set_handled();
+                ctx.request_paint_only();
             }
             PointerEvent::Up(PointerButtonEvent { button, state, .. }) => {
                 // Don't use ctx.has_hovered() / is_hovered(): when the
