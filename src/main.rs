@@ -94,37 +94,30 @@ fn main() -> anyhow::Result<()> {
         xilem::winit::window::Icon::from_rgba(rgba, side, side).ok()
     };
 
-    let mut window_attributes = xilem::winit::window::Window::default_attributes()
-        .with_title("gitara")
+    // TODO(xilem-0.4 migration): WindowOptions has no Linux platform-extension
+    // for setting the Wayland app_id / X11 WM_CLASS (both used to be done via
+    // WindowAttributesExtWayland::with_name and WindowAttributesExtX11::with_name).
+    // Without that, the Wayland compositor can no longer match our window to
+    // gitara.desktop, so the taskbar icon may regress to a generic one. The
+    // X11 _NET_WM_ICON path still works because we still pass `window_icon`.
+    // Re-add when xilem exposes a cross-platform hook.
+    let mut window_options = xilem::WindowOptions::new("gitara")
         .with_resizable(true)
-        .with_window_icon(window_icon)
+        .with_initial_window_icon(window_icon)
         .with_min_inner_size(xilem::winit::dpi::LogicalSize::new(800.0, 500.0))
-        .with_inner_size(xilem::winit::dpi::LogicalSize::new(1280.0, 800.0));
-
-    // Linux: set the window's app_id (Wayland) / WM_CLASS (X11) to
-    // "gitara". Wayland compositors look up gitara.desktop by this id;
-    // without it the window inherits the launching terminal's icon.
-    #[cfg(target_os = "linux")]
-    {
-        use xilem::winit::platform::wayland::WindowAttributesExtWayland;
-        use xilem::winit::platform::x11::WindowAttributesExtX11;
-        window_attributes =
-            WindowAttributesExtWayland::with_name(window_attributes, "gitara", "gitara");
-        window_attributes =
-            WindowAttributesExtX11::with_name(window_attributes, "gitara", "gitara");
-    }
+        .with_initial_inner_size(xilem::winit::dpi::LogicalSize::new(1280.0, 800.0));
 
     // Headless screenshot harness runs inside Xvfb without a window manager;
-    // winit's inner_size hint is ignored there, so force borderless fullscreen
-    // to fill the Xvfb screen.
+    // winit's inner_size hint is ignored there, so undecorate the window so
+    // it fills as much of the Xvfb screen as possible. (xilem 0.4's
+    // WindowOptions doesn't expose a fullscreen toggle; the previous
+    // Fullscreen::Borderless hint is gone — see TODO above.)
     if std::env::var_os("GITARA_HEADLESS").is_some() {
-        window_attributes = window_attributes
-            .with_fullscreen(Some(xilem::winit::window::Fullscreen::Borderless(None)))
-            .with_decorations(false);
+        window_options = window_options.with_decorations(false);
     }
 
-    let result = xilem::Xilem::new(state, app::root_view)
-        .run_windowed_in(xilem::EventLoop::with_user_event(), window_attributes);
+    let result = xilem::Xilem::new_simple(state, app::root_view, window_options)
+        .run_in(xilem::EventLoop::with_user_event());
 
     // Bypass static destructors and atexit handlers. wgpu/vello/winit on
     // Wayland (and sometimes X11) can SIGSEGV during shutdown when their

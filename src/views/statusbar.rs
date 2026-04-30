@@ -5,6 +5,7 @@ use crate::app::AppState;
 use crate::model::repo::HeadState;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
+    use xilem::style::Style as _;
     use xilem::view::{flex, label, Axis};
 
     let branch = match &state.repo.head {
@@ -27,10 +28,13 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
         n => format!("{n} commits selected"),
     };
 
-    flex((
-        label(branch).brush(state.theme.text_muted),
-        xilem::view::FlexSpacer::Flex(1.0),
-        label(sel).brush(state.theme.text_dim),
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            label(branch).color(state.theme.text_muted),
+            xilem::view::FlexSpacer::Flex(1.0),
+            label(sel).color(state.theme.text_dim),
+        ),
+    )
     .direction(Axis::Horizontal)
 }

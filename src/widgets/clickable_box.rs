@@ -11,14 +11,14 @@ use std::any::TypeId;
 
 use accesskit::{Node, Role};
 use masonry::core::{
-    AccessCtx, AccessEvent, Action, BoxConstraints, EventCtx, FromDynWidget, LayoutCtx, PaintCtx,
-    PointerButton, PointerEvent, PropertiesMut, PropertiesRef, QueryCtx, RegisterCtx, TextEvent,
-    Update, UpdateCtx, Widget, WidgetId, WidgetMut, WidgetPod,
+    AccessCtx, AccessEvent, BoxConstraints, ChildrenIds, EventCtx, FromDynWidget, LayoutCtx,
+    NewWidget, PaintCtx, PointerButton, PointerButtonEvent, PointerEvent, PropertiesMut,
+    PropertiesRef, RegisterCtx, TextEvent, Update, UpdateCtx, Widget, WidgetId, WidgetMut,
+    WidgetPod,
 };
 use masonry::kurbo::{Affine, Point, RoundedRect, Size};
 use masonry::peniko::{Color, Fill};
 use masonry::vello::Scene;
-use smallvec::{smallvec, SmallVec};
 use tracing::{trace_span, Span};
 
 // --- MARK: STYLE ---
@@ -31,8 +31,9 @@ pub struct ClickStyle {
     pub radius: f64,
 }
 
-/// Carries the button + window-relative position from a click. Submitted via
-/// `Action::Other` so the View layer can forward it to the user callback.
+/// Carries the button + window-relative position from a click. Submitted as
+/// the widget's `Action` so the View layer can forward it to the user
+/// callback.
 #[derive(Clone, Debug)]
 pub struct ClickInfo {
     pub button: Option<PointerButton>,
@@ -49,9 +50,13 @@ pub struct ClickableBox {
 }
 
 impl ClickableBox {
-    pub fn new_pod(child: WidgetPod<dyn Widget>, style: ClickStyle, selected: bool) -> Self {
+    pub fn new_pod(
+        child: NewWidget<impl Widget + ?Sized>,
+        style: ClickStyle,
+        selected: bool,
+    ) -> Self {
         Self {
-            child,
+            child: child.erased().to_pod(),
             style,
             selected,
         }
@@ -75,14 +80,16 @@ impl ClickableBox {
 }
 
 impl Widget for ClickableBox {
+    type Action = ClickInfo;
+
     fn on_pointer_event(
         &mut self,
-        ctx: &mut EventCtx,
+        ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         event: &PointerEvent,
     ) {
         match event {
-            PointerEvent::Down { .. } => {
+            PointerEvent::Down(..) => {
                 if !ctx.is_disabled() {
                     ctx.capture_pointer();
                     // Stop the Down from bubbling to ancestor click targets;
@@ -93,7 +100,7 @@ impl Widget for ClickableBox {
                     ctx.request_paint_only();
                 }
             }
-            PointerEvent::Up { button, state, .. } => {
+            PointerEvent::Up(PointerButtonEvent { button, state, .. }) => {
                 // Don't use ctx.has_hovered() / is_hovered(): when the
                 // pointer is captured, masonry's hover semantics say "either
                 // the capture target itself is hovered, or nothing is".
@@ -114,7 +121,7 @@ impl Widget for ClickableBox {
                             x: window_pt.x,
                             y: window_pt.y,
                         };
-                        ctx.submit_action(Action::Other(Box::new(info)));
+                        ctx.submit_action::<Self::Action>(info);
                     }
                 }
                 ctx.request_paint_only();
@@ -125,7 +132,7 @@ impl Widget for ClickableBox {
 
     fn on_text_event(
         &mut self,
-        _ctx: &mut EventCtx,
+        _ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         _event: &TextEvent,
     ) {
@@ -133,13 +140,13 @@ impl Widget for ClickableBox {
 
     fn on_access_event(
         &mut self,
-        _ctx: &mut EventCtx,
+        _ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         _event: &AccessEvent,
     ) {
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, _props: &mut PropertiesMut<'_>, event: &Update) {
+    fn update(&mut self, ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, event: &Update) {
         // ChildHoveredChanged is essential — paint() reads has_hovered() so we
         // need to repaint when a descendant's hover state flips.
         if matches!(
@@ -153,15 +160,15 @@ impl Widget for ClickableBox {
         }
     }
 
-    fn register_children(&mut self, ctx: &mut RegisterCtx) {
+    fn register_children(&mut self, ctx: &mut RegisterCtx<'_>) {
         ctx.register_child(&mut self.child);
     }
 
-    fn property_changed(&mut self, _ctx: &mut UpdateCtx, _property_type: TypeId) {}
+    fn property_changed(&mut self, _ctx: &mut UpdateCtx<'_>, _property_type: TypeId) {}
 
     fn layout(
         &mut self,
-        ctx: &mut LayoutCtx,
+        ctx: &mut LayoutCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         bc: &BoxConstraints,
     ) -> Size {
@@ -170,7 +177,7 @@ impl Widget for ClickableBox {
         size
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, _props: &PropertiesRef<'_>, scene: &mut Scene) {
+    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
         // has_hovered: descendants that don't act on the pointer are still
         // "in the row" for hover-feedback purposes.
         let is_hovered = ctx.has_hovered();
@@ -203,18 +210,18 @@ impl Widget for ClickableBox {
 
     fn accessibility(
         &mut self,
-        _ctx: &mut AccessCtx,
+        _ctx: &mut AccessCtx<'_>,
         _props: &PropertiesRef<'_>,
         _node: &mut Node,
     ) {
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
-        smallvec![self.child.id()]
+    fn children_ids(&self) -> ChildrenIds {
+        ChildrenIds::from_slice(&[self.child.id()])
     }
 
-    fn make_trace_span(&self, ctx: &QueryCtx<'_>) -> Span {
-        trace_span!("ClickableBox", id = ctx.widget_id().trace())
+    fn make_trace_span(&self, id: WidgetId) -> Span {
+        trace_span!("ClickableBox", id = id.trace())
     }
 }
 
@@ -227,7 +234,7 @@ const _: fn() = || {
 // --- MARK: XILEM VIEW ---
 
 use std::marker::PhantomData;
-use xilem::core::{DynMessage, MessageResult, Mut, View, ViewId, ViewMarker, ViewPathTracker};
+use xilem::core::{MessageContext, MessageResult, Mut, View, ViewId, ViewMarker, ViewPathTracker};
 use xilem::{Pod, ViewCtx, WidgetView};
 
 const CHILD_VIEW_ID: ViewId = ViewId::new(0);
@@ -275,11 +282,12 @@ where
     type Element = Pod<ClickableBox>;
     type ViewState = V::ViewState;
 
-    fn build(&self, ctx: &mut ViewCtx) -> (Self::Element, Self::ViewState) {
-        let (child, child_state) = ctx.with_id(CHILD_VIEW_ID, |ctx| self.inner.build(ctx));
+    fn build(&self, ctx: &mut ViewCtx, app_state: &mut State) -> (Self::Element, Self::ViewState) {
+        let (child, child_state) =
+            ctx.with_id(CHILD_VIEW_ID, |ctx| self.inner.build(ctx, app_state));
         let pod = ctx.with_action_widget(|ctx| {
-            ctx.new_pod(ClickableBox::new_pod(
-                child.erased_widget_pod(),
+            ctx.create_pod(ClickableBox::new_pod(
+                child.new_widget,
                 self.style,
                 self.selected,
             ))
@@ -292,7 +300,8 @@ where
         prev: &Self,
         view_state: &mut Self::ViewState,
         ctx: &mut ViewCtx,
-        mut element: Mut<Self::Element>,
+        mut element: Mut<'_, Self::Element>,
+        app_state: &mut State,
     ) {
         if self.style != prev.style {
             ClickableBox::set_style(&mut element, self.style);
@@ -303,7 +312,7 @@ where
         ctx.with_id(CHILD_VIEW_ID, |ctx| {
             let mut child = ClickableBox::child_mut(&mut element);
             self.inner
-                .rebuild(&prev.inner, view_state, ctx, child.downcast());
+                .rebuild(&prev.inner, view_state, ctx, child.downcast(), app_state);
         });
     }
 
@@ -311,7 +320,7 @@ where
         &self,
         view_state: &mut Self::ViewState,
         ctx: &mut ViewCtx,
-        mut element: Mut<Self::Element>,
+        mut element: Mut<'_, Self::Element>,
     ) {
         ctx.with_id(CHILD_VIEW_ID, |ctx| {
             let mut child = ClickableBox::child_mut(&mut element);
@@ -323,29 +332,27 @@ where
     fn message(
         &self,
         view_state: &mut Self::ViewState,
-        id_path: &[ViewId],
-        message: DynMessage,
+        message: &mut MessageContext,
+        mut element: Mut<'_, Self::Element>,
         app_state: &mut State,
     ) -> MessageResult<Action> {
-        match id_path.split_first() {
-            Some((&CHILD_VIEW_ID, rest)) => {
-                self.inner.message(view_state, rest, message, app_state)
+        match message.take_first() {
+            Some(CHILD_VIEW_ID) => {
+                let mut child = ClickableBox::child_mut(&mut element);
+                self.inner
+                    .message(view_state, message, child.downcast(), app_state)
             }
-            None => match message.downcast::<masonry::core::Action>() {
-                Ok(action) => match *action {
-                    masonry::core::Action::Other(payload) => {
-                        match payload.downcast::<ClickInfo>() {
-                            Ok(info) => MessageResult::Action((self.callback)(app_state, *info)),
-                            Err(_) => MessageResult::Stale(DynMessage(Box::new(
-                                masonry::core::Action::Other(Box::new(())),
-                            ))),
-                        }
-                    }
-                    other => MessageResult::Stale(DynMessage(Box::new(other))),
-                },
-                Err(m) => MessageResult::Stale(m),
+            None => match message.take_message::<ClickInfo>() {
+                Some(info) => MessageResult::Action((self.callback)(app_state, *info)),
+                None => {
+                    tracing::error!("Wrong message type in ClickableBox::message: {message:?}");
+                    MessageResult::Stale
+                }
             },
-            _ => MessageResult::Stale(message),
+            _ => {
+                tracing::warn!("Got unexpected id path in ClickableBox::message");
+                MessageResult::Stale
+            }
         }
     }
 }

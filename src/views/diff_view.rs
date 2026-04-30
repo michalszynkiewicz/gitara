@@ -8,7 +8,9 @@
 
 use std::path::PathBuf;
 
-use xilem::view::{flex, label, sized_box, Axis, CrossAxisAlignment, Padding};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::{Padding, Style as _};
+use xilem::view::{flex, label, sized_box, Axis, CrossAxisAlignment};
 use xilem::WidgetView as _;
 
 use crate::app::AppState;
@@ -34,18 +36,18 @@ pub fn render_hunks(
         if current_path.as_ref() != Some(&path) {
             rows.push(
                 label(path.display().to_string())
-                    .brush(theme.accent)
                     .text_size(12.0)
                     .weight(xilem::FontWeight::MEDIUM)
+                    .color(theme.accent)
                     .boxed(),
             );
             current_path = Some(path);
         }
         rows.push(
             label(hunk.header.clone())
-                .brush(theme.text_dim)
                 .text_size(11.0)
                 .font(mono.clone())
+                .color(theme.text_dim)
                 .boxed(),
         );
         for line in hunk.lines {
@@ -57,20 +59,24 @@ pub fn render_hunks(
             };
             rows.push(
                 label(format!("{prefix} {}", line.content))
-                    .brush(color)
                     .text_size(11.0)
                     .font(mono.clone())
+                    .color(color)
                     .boxed(),
             );
         }
-        rows.push(sized_box(flex(())).height(6.0).boxed());
+        rows.push(
+            sized_box(flex(Axis::Vertical, ()))
+                .height((6.0_f64).px())
+                .boxed(),
+        );
     }
 
     sized_box(
-        flex(rows)
+        flex(Axis::Vertical, rows)
             .direction(Axis::Vertical)
             .cross_axis_alignment(CrossAxisAlignment::Start)
-            .gap(0.0),
+            .gap((0.0_f64).px()),
     )
     .padding(Padding::from_vh(10.0, 14.0))
 }

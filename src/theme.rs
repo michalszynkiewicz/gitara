@@ -7,8 +7,8 @@ use vello::peniko::Color;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
 pub enum ThemeMode {
-    #[default]
     Light,
+    #[default]
     Dark,
 }
 

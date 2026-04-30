@@ -12,13 +12,12 @@ use std::any::TypeId;
 
 use accesskit::{Node, Role};
 use masonry::core::{
-    AccessCtx, AccessEvent, BoxConstraints, EventCtx, FromDynWidget, LayoutCtx, PaintCtx,
-    PointerEvent, PropertiesMut, PropertiesRef, QueryCtx, RegisterCtx, TextEvent, Update,
+    AccessCtx, AccessEvent, BoxConstraints, ChildrenIds, EventCtx, FromDynWidget, LayoutCtx,
+    NoAction, PaintCtx, PointerEvent, PropertiesMut, PropertiesRef, RegisterCtx, TextEvent, Update,
     UpdateCtx, Widget, WidgetId, WidgetPod,
 };
 use masonry::kurbo::{Point, Size};
 use masonry::vello::Scene;
-use smallvec::SmallVec;
 use tracing::{trace_span, Span};
 
 pub struct Flow {
@@ -38,40 +37,48 @@ impl Flow {
 }
 
 impl Widget for Flow {
+    type Action = NoAction;
+
     fn on_pointer_event(
         &mut self,
-        _ctx: &mut EventCtx,
+        _ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         _event: &PointerEvent,
     ) {
     }
     fn on_text_event(
         &mut self,
-        _ctx: &mut EventCtx,
+        _ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         _event: &TextEvent,
     ) {
     }
     fn on_access_event(
         &mut self,
-        _ctx: &mut EventCtx,
+        _ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         _event: &AccessEvent,
     ) {
     }
-    fn update(&mut self, _ctx: &mut UpdateCtx, _props: &mut PropertiesMut<'_>, _event: &Update) {}
+    fn update(
+        &mut self,
+        _ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _event: &Update,
+    ) {
+    }
 
-    fn register_children(&mut self, ctx: &mut RegisterCtx) {
+    fn register_children(&mut self, ctx: &mut RegisterCtx<'_>) {
         for child in &mut self.children {
             ctx.register_child(child);
         }
     }
 
-    fn property_changed(&mut self, _ctx: &mut UpdateCtx, _property_type: TypeId) {}
+    fn property_changed(&mut self, _ctx: &mut UpdateCtx<'_>, _property_type: TypeId) {}
 
     fn layout(
         &mut self,
-        ctx: &mut LayoutCtx,
+        ctx: &mut LayoutCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         bc: &BoxConstraints,
     ) -> Size {
@@ -115,7 +122,7 @@ impl Widget for Flow {
         };
         // Always claim the full bc.max().width when finite. Two cases
         // we care about:
-        //   1. Tight bc (sized_box.width(N) wrapper): max == min == N.
+        //   1. Tight bc (sized_box.width((N).px()) wrapper): max == min == N.
         //      We must return N so neighbouring columns line up.
         //   2. Loose bc with a finite max (a flex(1.0) allocation in a
         //      flex row): max == the slot the parent gave us. If we
@@ -132,7 +139,7 @@ impl Widget for Flow {
         Size::new(w, total_h)
     }
 
-    fn paint(&mut self, _ctx: &mut PaintCtx, _props: &PropertiesRef<'_>, _scene: &mut Scene) {}
+    fn paint(&mut self, _ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, _scene: &mut Scene) {}
 
     fn accessibility_role(&self) -> Role {
         Role::GenericContainer
@@ -140,18 +147,18 @@ impl Widget for Flow {
 
     fn accessibility(
         &mut self,
-        _ctx: &mut AccessCtx,
+        _ctx: &mut AccessCtx<'_>,
         _props: &PropertiesRef<'_>,
         _node: &mut Node,
     ) {
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
+    fn children_ids(&self) -> ChildrenIds {
         self.children.iter().map(|c| c.id()).collect()
     }
 
-    fn make_trace_span(&self, ctx: &QueryCtx<'_>) -> Span {
-        trace_span!("Flow", id = ctx.widget_id().trace())
+    fn make_trace_span(&self, id: WidgetId) -> Span {
+        trace_span!("Flow", id = id.trace())
     }
 }
 
@@ -162,7 +169,7 @@ const _: fn() = || {
 
 // --- MARK: XILEM VIEW ---
 
-use xilem::core::{DynMessage, MessageResult, Mut, View, ViewId, ViewMarker, ViewPathTracker};
+use xilem::core::{MessageContext, MessageResult, Mut, View, ViewId, ViewMarker, ViewPathTracker};
 use xilem::{AnyWidgetView, Pod, ViewCtx};
 
 /// A flow/wrap layout view. Pass child views as boxed `AnyWidgetView`s
@@ -201,16 +208,16 @@ where
     type ViewState =
         Vec<<Box<AnyWidgetView<State, Action>> as View<State, Action, ViewCtx>>::ViewState>;
 
-    fn build(&self, ctx: &mut ViewCtx) -> (Self::Element, Self::ViewState) {
+    fn build(&self, ctx: &mut ViewCtx, app_state: &mut State) -> (Self::Element, Self::ViewState) {
         let mut child_pods: Vec<WidgetPod<dyn Widget>> = Vec::with_capacity(self.children.len());
         let mut child_states: Self::ViewState = Vec::with_capacity(self.children.len());
         for (i, child) in self.children.iter().enumerate() {
             let id = ViewId::new(i as u64);
-            let (pod, state) = ctx.with_id(id, |ctx| child.build(ctx));
-            child_pods.push(pod.erased_widget_pod());
+            let (pod, state) = ctx.with_id(id, |ctx| child.build(ctx, app_state));
+            child_pods.push(pod.erased().new_widget.to_pod());
             child_states.push(state);
         }
-        let pod = ctx.new_pod(Flow::new(child_pods, self.h_gap, self.v_gap));
+        let pod = ctx.create_pod(Flow::new(child_pods, self.h_gap, self.v_gap));
         (pod, child_states)
     }
 
@@ -219,7 +226,8 @@ where
         prev: &Self,
         view_state: &mut Self::ViewState,
         ctx: &mut ViewCtx,
-        mut element: Mut<Self::Element>,
+        mut element: Mut<'_, Self::Element>,
+        app_state: &mut State,
     ) {
         let new_len = self.children.len();
         let prev_len = prev.children.len();
@@ -236,6 +244,7 @@ where
                     &mut view_state[i],
                     ctx,
                     child.downcast(),
+                    app_state,
                 );
             });
         }
@@ -260,8 +269,11 @@ where
         if new_len > prev_len {
             for i in prev_len..new_len {
                 let id = ViewId::new(i as u64);
-                let (pod, state) = ctx.with_id(id, |ctx| self.children[i].build(ctx));
-                element.widget.children.push(pod.erased_widget_pod());
+                let (pod, state) = ctx.with_id(id, |ctx| self.children[i].build(ctx, app_state));
+                element
+                    .widget
+                    .children
+                    .push(pod.erased().new_widget.to_pod());
                 view_state.push(state);
             }
             element.ctx.children_changed();
@@ -279,7 +291,7 @@ where
         &self,
         view_state: &mut Self::ViewState,
         ctx: &mut ViewCtx,
-        mut element: Mut<Self::Element>,
+        mut element: Mut<'_, Self::Element>,
     ) {
         for (i, child) in self.children.iter().enumerate() {
             let id = ViewId::new(i as u64);
@@ -294,18 +306,24 @@ where
     fn message(
         &self,
         view_state: &mut Self::ViewState,
-        id_path: &[ViewId],
-        message: DynMessage,
+        message: &mut MessageContext,
+        mut element: Mut<'_, Self::Element>,
         app_state: &mut State,
     ) -> MessageResult<Action> {
-        let (head, rest) = match id_path.split_first() {
+        let head = match message.take_first() {
             Some(p) => p,
-            None => return MessageResult::Stale(message),
+            None => return MessageResult::Stale,
         };
         let idx = head.routing_id() as usize;
         if idx >= self.children.len() {
-            return MessageResult::Stale(message);
+            return MessageResult::Stale;
         }
-        self.children[idx].message(&mut view_state[idx], rest, message, app_state)
+        let mut child_mut = element.ctx.get_mut(&mut element.widget.children[idx]);
+        self.children[idx].message(
+            &mut view_state[idx],
+            message,
+            child_mut.downcast(),
+            app_state,
+        )
     }
 }

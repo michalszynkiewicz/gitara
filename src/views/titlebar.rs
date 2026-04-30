@@ -4,6 +4,8 @@
 use crate::app::AppState;
 use crate::theme::ThemeMode;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::Style as _;
 use xilem::view::{flex, label, Axis, CrossAxisAlignment, FlexSpacer};
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -19,32 +21,35 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     };
     let _ = next_mode_text;
 
-    flex((
-        label("gitara")
-            .brush(theme.text)
-            .text_size(13.0)
-            .weight(xilem::FontWeight::MEDIUM),
-        label(state.repo.name.clone())
-            .brush(theme.text_muted)
-            .text_size(12.0),
-        FlexSpacer::Flex(1.0),
-        flat_button(
-            xilem::view::label(label_text)
-                .brush(theme.text_muted)
-                .text_size(11.0),
-            FlatStyle {
-                idle_bg: None,
-                hover_bg: theme.bg_hover,
-                active_bg: None,
-                radius: 4.0,
-                padding_v: 3.0,
-                padding_h: 10.0,
-            },
-            false,
-            |s: &mut AppState| s.toggle_theme(),
+    flex(
+        Axis::Vertical,
+        (
+            label("gitara")
+                .text_size(13.0)
+                .weight(xilem::FontWeight::MEDIUM)
+                .color(theme.text),
+            label(state.repo.name.clone())
+                .text_size(12.0)
+                .color(theme.text_muted),
+            FlexSpacer::Flex(1.0),
+            flat_button(
+                xilem::view::label(label_text)
+                    .text_size(11.0)
+                    .color(theme.text_muted),
+                FlatStyle {
+                    idle_bg: None,
+                    hover_bg: theme.bg_hover,
+                    active_bg: None,
+                    radius: 4.0,
+                    padding_v: 3.0,
+                    padding_h: 10.0,
+                },
+                false,
+                |s: &mut AppState| s.toggle_theme(),
+            ),
         ),
-    ))
+    )
     .direction(Axis::Horizontal)
     .cross_axis_alignment(CrossAxisAlignment::Center)
-    .gap(8.0)
+    .gap((8.0_f64).px())
 }

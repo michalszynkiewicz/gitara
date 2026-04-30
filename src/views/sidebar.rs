@@ -6,40 +6,48 @@ use crate::app::{AppState, CtxMenu, CtxMenuKind};
 use crate::theme::Theme;
 use crate::widgets::clickable_box::{clickable_box, ClickInfo, ClickStyle};
 use masonry::core::PointerButton;
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::{Padding, Style as _};
 use xilem::view::{
-    flex, label, sized_box, Axis, CrossAxisAlignment, FlexSpacer, Label, MainAxisAlignment, Padding,
+    flex, label, sized_box, Axis, CrossAxisAlignment, FlexSpacer, MainAxisAlignment,
 };
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     let theme = state.theme.clone();
 
-    flex((
-        section_header("BRANCHES", &theme),
-        flex(branch_rows(state, &theme))
-            .direction(Axis::Vertical)
-            .gap(0.0),
-        FlexSpacer::Fixed(12.0),
-        section_header("REMOTES", &theme),
-        flex(remote_rows(state)).direction(Axis::Vertical).gap(2.0),
-        FlexSpacer::Fixed(12.0),
-        section_header("TAGS", &theme),
-        flex(tag_rows(state)).direction(Axis::Vertical).gap(2.0),
-        FlexSpacer::Fixed(12.0),
-        section_header("STASHES", &theme),
-        flex(stash_rows(state)).direction(Axis::Vertical).gap(2.0),
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            section_header("BRANCHES", &theme),
+            flex(Axis::Vertical, branch_rows(state, &theme))
+                .direction(Axis::Vertical)
+                .gap((0.0_f64).px()),
+            FlexSpacer::Fixed((12.0_f64).px()),
+            section_header("REMOTES", &theme),
+            flex(Axis::Vertical, remote_rows(state)).gap((2.0_f64).px()),
+            FlexSpacer::Fixed((12.0_f64).px()),
+            section_header("TAGS", &theme),
+            flex(Axis::Vertical, tag_rows(state)).gap((2.0_f64).px()),
+            FlexSpacer::Fixed((12.0_f64).px()),
+            section_header("STASHES", &theme),
+            flex(Axis::Vertical, stash_rows(state)).gap((2.0_f64).px()),
+        ),
+    )
     .direction(Axis::Vertical)
     .cross_axis_alignment(CrossAxisAlignment::Start)
     .main_axis_alignment(MainAxisAlignment::Start)
-    .gap(4.0)
+    .gap((4.0_f64).px())
 }
 
-fn section_header(title: &'static str, theme: &Theme) -> Label {
+fn section_header(
+    title: &'static str,
+    theme: &Theme,
+) -> impl xilem::WidgetView<AppState, Widget = masonry::widgets::Label> + use<> {
     label(title)
-        .brush(theme.text_dim)
         .text_size(10.0)
         .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim)
 }
 
 fn branch_rows(state: &AppState, theme: &Theme) -> Vec<Box<xilem::AnyWidgetView<AppState>>> {
@@ -58,10 +66,11 @@ fn branch_rows(state: &AppState, theme: &Theme) -> Vec<Box<xilem::AnyWidgetView<
             let prefix = if current { "●  " } else { "   " };
             let text = format!("{prefix}{name}{ahead_behind}");
             let brush = if current { theme.accent } else { theme.text };
-            let mut lbl = label(text).brush(brush).text_size(12.0);
+            let mut lbl = label(text).text_size(12.0);
             if current {
                 lbl = lbl.weight(xilem::FontWeight::MEDIUM);
             }
+            let lbl = lbl.color(brush);
             let row_inner = sized_box(lbl)
                 .expand_width()
                 .padding(Padding::from_vh(3.0, 4.0));
@@ -129,8 +138,8 @@ fn remote_rows(state: &AppState) -> Vec<Box<xilem::AnyWidgetView<AppState>>> {
         .map(|r| {
             let name = r.name.clone();
             let lbl = label(format!("   {}", r.name))
-                .brush(theme.text)
-                .text_size(12.0);
+                .text_size(12.0)
+                .color(theme.text);
             clickable_box_for_ctx_menu(
                 lbl,
                 &theme,
@@ -150,8 +159,8 @@ fn tag_rows(state: &AppState) -> Vec<Box<xilem::AnyWidgetView<AppState>>> {
         .map(|t| {
             let name = t.name.clone();
             let lbl = label(format!("   {}", t.name))
-                .brush(theme.text)
-                .text_size(12.0);
+                .text_size(12.0)
+                .color(theme.text);
             clickable_box_for_ctx_menu(
                 lbl,
                 &theme,
@@ -171,8 +180,8 @@ fn stash_rows(state: &AppState) -> Vec<Box<xilem::AnyWidgetView<AppState>>> {
         .map(|s| {
             let idx = s.idx;
             let lbl = label(format!("   stash@{{{}}} · {}", s.idx, s.message))
-                .brush(theme.text_muted)
-                .text_size(12.0);
+                .text_size(12.0)
+                .color(theme.text_muted);
             clickable_box_for_ctx_menu(
                 lbl,
                 &theme,

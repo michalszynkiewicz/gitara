@@ -3,7 +3,9 @@
 use crate::app::{AppState, Modal, RenameBranchModalState, Toast};
 use crate::git;
 use crate::theme::Theme;
-use xilem::view::{flex, label, sized_box, textbox, Axis, CrossAxisAlignment, FlexSpacer, Padding};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::{Padding, Style as _};
+use xilem::view::{flex, label, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -19,38 +21,46 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 
 fn body_view(s: &RenameBranchModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let new_label = label("new name")
-        .brush(theme.text_dim)
         .text_size(10.0)
-        .weight(xilem::FontWeight::MEDIUM);
+        .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim);
     let new_input = sized_box(
-        textbox(s.new_name.clone(), |st: &mut AppState, new| {
+        text_input(s.new_name.clone(), |st: &mut AppState, new| {
             if let Some(rs) = state_mut(st) {
                 rs.new_name = new;
                 rs.error = None;
             }
         })
         .on_enter(|st: &mut AppState, _| run_rename(st))
-        .brush(super::input_text()),
+        .text_color(super::input_text()),
     )
     .expand_width()
-    .height(32.0)
-    .background(super::input_bg())
+    .height((32.0_f64).px())
+    .corner_radius(4.0)
+    .background_color(super::input_bg())
     .border(theme.border, 1.0)
-    .rounded(4.0)
     .padding(Padding::from_vh(4.0, 8.0));
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
         Some(err) => label(err.clone())
-            .brush(theme.removed)
             .text_size(11.0)
+            .color(theme.removed)
             .boxed(),
         None => label("").boxed(),
     };
 
-    flex((new_label, new_input, FlexSpacer::Fixed(8.0), error_view))
-        .direction(Axis::Vertical)
-        .cross_axis_alignment(CrossAxisAlignment::Start)
-        .gap(4.0)
+    flex(
+        Axis::Vertical,
+        (
+            new_label,
+            new_input,
+            FlexSpacer::Fixed((8.0_f64).px()),
+            error_view,
+        ),
+    )
+    .direction(Axis::Vertical)
+    .cross_axis_alignment(CrossAxisAlignment::Start)
+    .gap((4.0_f64).px())
 }
 
 fn run_rename(st: &mut AppState) {

@@ -5,7 +5,9 @@ use crate::app::{AppState, BranchModalState, Modal};
 use crate::git;
 use crate::theme::Theme;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
-use xilem::view::{flex, label, sized_box, textbox, Axis, CrossAxisAlignment, FlexSpacer, Padding};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::{Padding, Style as _};
+use xilem::view::{flex, label, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -28,25 +30,25 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 
 fn body_view(s: &BranchModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let name_label = label("name")
-        .brush(theme.text_dim)
         .text_size(10.0)
-        .weight(xilem::FontWeight::MEDIUM);
+        .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim);
 
     let name_input = sized_box(
-        textbox(s.name.clone(), |st: &mut AppState, new| {
+        text_input(s.name.clone(), |st: &mut AppState, new| {
             if let Some(bs) = branch_state_mut(st) {
                 bs.name = new;
                 bs.error = None;
             }
         })
         .on_enter(|st: &mut AppState, _| run_create(st))
-        .brush(super::input_text()),
+        .text_color(super::input_text()),
     )
     .expand_width()
-    .height(32.0)
-    .background(super::input_bg())
+    .height((32.0_f64).px())
+    .corner_radius(4.0)
+    .background_color(super::input_bg())
     .border(theme.border, 1.0)
-    .rounded(4.0)
     .padding(Padding::from_vh(4.0, 8.0));
 
     // Checkout toggle — a small pill button that reflects current state.
@@ -57,12 +59,12 @@ fn body_view(s: &BranchModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
     };
     let checkout_btn = flat_button(
         xilem::view::label(checkout_label)
-            .brush(if s.checkout {
+            .text_size(11.0)
+            .color(if s.checkout {
                 theme.accent
             } else {
                 theme.text_muted
-            })
-            .text_size(11.0),
+            }),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -81,23 +83,26 @@ fn body_view(s: &BranchModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
         Some(err) => label(err.clone())
-            .brush(theme.removed)
             .text_size(11.0)
+            .color(theme.removed)
             .boxed(),
         None => label("").boxed(),
     };
 
-    flex((
-        name_label,
-        name_input,
-        FlexSpacer::Fixed(12.0),
-        checkout_btn,
-        FlexSpacer::Fixed(8.0),
-        error_view,
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            name_label,
+            name_input,
+            FlexSpacer::Fixed((12.0_f64).px()),
+            checkout_btn,
+            FlexSpacer::Fixed((8.0_f64).px()),
+            error_view,
+        ),
+    )
     .direction(Axis::Vertical)
     .cross_axis_alignment(CrossAxisAlignment::Start)
-    .gap(4.0)
+    .gap((4.0_f64).px())
 }
 
 fn footer_view(theme: &Theme) -> Box<xilem::AnyWidgetView<AppState>> {
