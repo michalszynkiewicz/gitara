@@ -103,15 +103,13 @@ impl Widget for FlatButton {
         event: &PointerEvent,
     ) {
         match event {
-            PointerEvent::Down(..) => {
-                if !ctx.is_disabled() {
-                    ctx.capture_pointer();
-                    // Stop bubbling so an ancestor ClickableBox (e.g. the
-                    // ctx-menu backdrop) doesn't steal capture from this
-                    // button.
-                    ctx.set_handled();
-                    ctx.request_paint_only();
-                }
+            PointerEvent::Down(..) if !ctx.is_disabled() => {
+                ctx.capture_pointer();
+                // Stop bubbling so an ancestor ClickableBox (e.g. the
+                // ctx-menu backdrop) doesn't steal capture from this
+                // button.
+                ctx.set_handled();
+                ctx.request_paint_only();
             }
             PointerEvent::Up(PointerButtonEvent { button, .. }) => {
                 if ctx.is_pointer_capture_target() && ctx.is_hovered() && !ctx.is_disabled() {
