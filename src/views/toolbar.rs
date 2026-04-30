@@ -5,6 +5,8 @@ use crate::app::{AppState, Modal};
 use crate::theme::Theme;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use vello::peniko::Color;
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::Style as _;
 use xilem::view::{flex, Axis, CrossAxisAlignment, FlexSpacer};
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -18,69 +20,72 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
         .map(|b| b.ahead > 0)
         .unwrap_or(false);
 
-    flex((
-        tb(theme, "Commit", !primary_is_push, |s: &mut AppState| {
-            let st = crate::app::CommitModalState::open(&s.repo.path);
-            s.modal = Some(Modal::Commit(st));
-        }),
-        tb(theme, "Fetch", false, |s: &mut AppState| {
-            // Default to first remote in the repo (usually "origin").
-            let remote = s
-                .repo
-                .remotes
-                .first()
-                .map(|r| r.name.clone())
-                .unwrap_or_default();
-            s.modal = Some(Modal::Fetch(crate::app::FetchModalState {
-                remote,
-                prune: false,
-                error: None,
-                running: false,
-            }));
-        }),
-        tb(theme, "Pull", false, |s: &mut AppState| run_pull(s)),
-        tb(theme, "Push", primary_is_push, |s: &mut AppState| {
-            let remote = s
-                .repo
-                .remotes
-                .first()
-                .map(|r| r.name.clone())
-                .unwrap_or_default();
-            let branch = s
-                .repo
-                .branches
-                .iter()
-                .find(|b| b.current)
-                .map(|b| b.name.clone())
-                .unwrap_or_default();
-            s.modal = Some(Modal::Push(crate::app::PushModalState {
-                remote,
-                target_branch: branch.clone(),
-                branch,
-                force_with_lease: false,
-                error: None,
-                running: false,
-            }));
-        }),
-        FlexSpacer::Fixed(12.0),
-        tb(theme, "Branch", false, |s: &mut AppState| {
-            s.modal = Some(Modal::Branch(crate::app::BranchModalState::default()));
-        }),
-        tb(theme, "Merge", false, |s: &mut AppState| {
-            s.modal = Some(Modal::Merge(crate::app::MergeModalState::default()));
-        }),
-        tb(theme, "Rebase", false, |s: &mut AppState| {
-            s.modal = Some(Modal::Rebase(crate::app::RebaseModalState::default()));
-        }),
-        FlexSpacer::Flex(1.0),
-        tb(theme, "Refresh", false, |s: &mut AppState| {
-            s.refresh_all();
-            s.toast = Some(crate::app::Toast::info("refreshed".into()));
-        }),
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            tb(theme, "Commit", !primary_is_push, |s: &mut AppState| {
+                let st = crate::app::CommitModalState::open(&s.repo.path);
+                s.modal = Some(Modal::Commit(st));
+            }),
+            tb(theme, "Fetch", false, |s: &mut AppState| {
+                // Default to first remote in the repo (usually "origin").
+                let remote = s
+                    .repo
+                    .remotes
+                    .first()
+                    .map(|r| r.name.clone())
+                    .unwrap_or_default();
+                s.modal = Some(Modal::Fetch(crate::app::FetchModalState {
+                    remote,
+                    prune: false,
+                    error: None,
+                    running: false,
+                }));
+            }),
+            tb(theme, "Pull", false, |s: &mut AppState| run_pull(s)),
+            tb(theme, "Push", primary_is_push, |s: &mut AppState| {
+                let remote = s
+                    .repo
+                    .remotes
+                    .first()
+                    .map(|r| r.name.clone())
+                    .unwrap_or_default();
+                let branch = s
+                    .repo
+                    .branches
+                    .iter()
+                    .find(|b| b.current)
+                    .map(|b| b.name.clone())
+                    .unwrap_or_default();
+                s.modal = Some(Modal::Push(crate::app::PushModalState {
+                    remote,
+                    target_branch: branch.clone(),
+                    branch,
+                    force_with_lease: false,
+                    error: None,
+                    running: false,
+                }));
+            }),
+            FlexSpacer::Fixed((12.0_f64).px()),
+            tb(theme, "Branch", false, |s: &mut AppState| {
+                s.modal = Some(Modal::Branch(crate::app::BranchModalState::default()));
+            }),
+            tb(theme, "Merge", false, |s: &mut AppState| {
+                s.modal = Some(Modal::Merge(crate::app::MergeModalState::default()));
+            }),
+            tb(theme, "Rebase", false, |s: &mut AppState| {
+                s.modal = Some(Modal::Rebase(crate::app::RebaseModalState::default()));
+            }),
+            FlexSpacer::Flex(1.0),
+            tb(theme, "Refresh", false, |s: &mut AppState| {
+                s.refresh_all();
+                s.toast = Some(crate::app::Toast::info("refreshed".into()));
+            }),
+        ),
+    )
     .direction(Axis::Horizontal)
     .cross_axis_alignment(CrossAxisAlignment::Center)
-    .gap(2.0)
+    .gap((2.0_f64).px())
 }
 
 fn tb<F>(
@@ -93,7 +98,7 @@ where
     F: Fn(&mut AppState) + Send + Sync + 'static,
 {
     let fg = if primary { theme.accent_fg } else { theme.text };
-    let lbl = xilem::view::label(text).brush(fg).text_size(12.0);
+    let lbl = xilem::view::label(text).text_size(12.0).color(fg);
     flat_button(
         lbl,
         FlatStyle {

@@ -8,9 +8,10 @@ use crate::app::{AppState, CommitModalState, Modal};
 use crate::theme::Theme;
 use crate::widgets::clickable_box::{clickable_box, ClickStyle};
 use crate::widgets::flat_button::{flat_button, FlatStyle};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::{Padding, Style as _};
 use xilem::view::{
-    flex, label, portal, sized_box, textbox, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer,
-    Padding,
+    flex, label, portal, sized_box, text_input, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer,
 };
 use xilem::WidgetView as _;
 
@@ -31,41 +32,40 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 }
 
 fn body_view(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
-    let main_row = flex((
-        sized_box(left_column(s, theme))
-            .width(280.0)
-            .expand_height(),
-        FlexSpacer::Fixed(12.0),
-        right_pane(s, theme).flex(1.0),
-    ))
+    let main_row = flex(
+        Axis::Vertical,
+        (
+            sized_box(left_column(s, theme))
+                .width((280.0_f64).px())
+                .expand_height(),
+            FlexSpacer::Fixed((12.0_f64).px()),
+            right_pane(s, theme).flex(1.0),
+        ),
+    )
     .direction(Axis::Horizontal)
     .cross_axis_alignment(CrossAxisAlignment::Fill);
 
     let msg_label = label("message  (Enter commits — Shift+Enter or Ctrl/Cmd+Enter for newline)")
-        .brush(theme.text_dim)
         .text_size(10.0)
-        .weight(xilem::FontWeight::MEDIUM);
+        .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim);
 
     let msg_box = sized_box(
-        textbox(s.message.clone(), |st: &mut AppState, new| {
+        text_input(s.message.clone(), |st: &mut AppState, new| {
             if let Some(cs) = commit_state_mut(st) {
                 cs.message = new;
                 cs.error = None;
             }
         })
         .on_enter(|st: &mut AppState, _| run_commit(st))
-        // OnShiftEnter (patched in vendored masonry) lets Shift+Enter
-        // and Ctrl/Cmd+Enter insert a newline, while plain Enter still
-        // submits — so subject + body commit messages work without
-        // surrendering Enter-to-commit.
         .insert_newline(xilem::InsertNewline::OnShiftEnter)
-        .brush(super::input_text()),
+        .text_color(super::input_text()),
     )
     .expand_width()
-    .height(90.0)
-    .background(super::input_bg())
+    .height((90.0_f64).px())
+    .corner_radius(4.0)
+    .background_color(super::input_bg())
     .border(theme.border, 1.0)
-    .rounded(4.0)
     .padding(Padding::from_vh(4.0, 8.0));
 
     let amend_label = if s.amend {
@@ -75,12 +75,12 @@ fn body_view(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
     };
     let amend_btn = flat_button(
         xilem::view::label(amend_label)
-            .brush(if s.amend {
+            .text_size(11.0)
+            .color(if s.amend {
                 theme.warn
             } else {
                 theme.text_muted
-            })
-            .text_size(11.0),
+            }),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -100,26 +100,29 @@ fn body_view(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
         Some(err) => label(err.clone())
-            .brush(theme.removed)
             .text_size(11.0)
+            .color(theme.removed)
             .boxed(),
         None => label("").boxed(),
     };
 
-    flex((
-        msg_label,
-        msg_box,
-        FlexSpacer::Fixed(6.0),
-        amend_btn,
-        FlexSpacer::Fixed(4.0),
-        error_view,
-        FlexSpacer::Fixed(10.0),
-        main_row.flex(1.0),
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            msg_label,
+            msg_box,
+            FlexSpacer::Fixed((6.0_f64).px()),
+            amend_btn,
+            FlexSpacer::Fixed((4.0_f64).px()),
+            error_view,
+            FlexSpacer::Fixed((10.0_f64).px()),
+            main_row.flex(1.0),
+        ),
+    )
     .direction(Axis::Vertical)
     .cross_axis_alignment(CrossAxisAlignment::Start)
     .must_fill_major_axis(true)
-    .gap(4.0)
+    .gap((4.0_f64).px())
 }
 
 fn left_column(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
@@ -160,17 +163,17 @@ fn left_column(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<Ap
     };
 
     let unstaged_list = sized_box(
-        flex(unstaged_rows)
+        flex(Axis::Vertical, unstaged_rows)
             .direction(Axis::Vertical)
             .cross_axis_alignment(CrossAxisAlignment::Start)
-            .gap(1.0),
+            .gap((1.0_f64).px()),
     )
     .expand_width();
     let staged_list = sized_box(
-        flex(staged_rows)
+        flex(Axis::Vertical, staged_rows)
             .direction(Axis::Vertical)
             .cross_axis_alignment(CrossAxisAlignment::Start)
-            .gap(1.0),
+            .gap((1.0_f64).px()),
     )
     .expand_width();
 
@@ -182,47 +185,50 @@ fn left_column(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<Ap
     let staged_factor = (s.staged.len().max(1)) as f64;
 
     sized_box(
-        flex((
-            unstaged_header,
-            // Wrap portals in sized_box(...).expand_height() — masonry's
-            // Flex passes a *loose* major-axis bc (min=0) and Portal's
-            // layout returns content size, so flex factors alone don't
-            // stretch the portal. expand_height pins it to bc.max.
-            sized_box(portal(unstaged_list))
-                .expand_height()
-                .flex(unstaged_factor),
-            FlexSpacer::Fixed(8.0),
-            staged_header,
-            sized_box(portal(staged_list))
-                .expand_height()
-                .flex(staged_factor),
-        ))
+        flex(
+            Axis::Vertical,
+            (
+                unstaged_header,
+                // Wrap portals in sized_box(...).expand_height() — masonry's
+                // Flex passes a *loose* major-axis bc (min=0) and Portal's
+                // layout returns content size, so flex factors alone don't
+                // stretch the portal. expand_height pins it to bc.max.
+                sized_box(portal(unstaged_list))
+                    .expand_height()
+                    .flex(unstaged_factor),
+                FlexSpacer::Fixed((8.0_f64).px()),
+                staged_header,
+                sized_box(portal(staged_list))
+                    .expand_height()
+                    .flex(staged_factor),
+            ),
+        )
         .direction(Axis::Vertical)
         .cross_axis_alignment(CrossAxisAlignment::Start)
         .must_fill_major_axis(true)
-        .gap(4.0),
+        .gap((4.0_f64).px()),
     )
     .expand()
+    .corner_radius(4.0)
     .padding(Padding::from(4.0))
-    .background(theme.bg)
+    .background_color(theme.bg)
     .border(theme.border, 1.0)
-    .rounded(4.0)
 }
 
 fn right_pane(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let body: Box<xilem::AnyWidgetView<AppState>> = if s.selected_path.is_none() {
         sized_box(
             label("Select a file to view its diff.")
-                .brush(theme.text_dim)
-                .text_size(12.0),
+                .text_size(12.0)
+                .color(theme.text_dim),
         )
         .padding(Padding::from_vh(14.0, 16.0))
         .boxed()
     } else if s.hunks.is_empty() {
         sized_box(
             label("No diff for this file.")
-                .brush(theme.text_dim)
-                .text_size(12.0),
+                .text_size(12.0)
+                .color(theme.text_dim),
         )
         .padding(Padding::from_vh(14.0, 16.0))
         .boxed()
@@ -232,9 +238,9 @@ fn right_pane(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<App
 
     sized_box(portal(body))
         .expand()
-        .background(theme.bg)
+        .corner_radius(4.0)
+        .background_color(theme.bg)
         .border(theme.border, 1.0)
-        .rounded(4.0)
 }
 
 fn section_header(
@@ -243,21 +249,24 @@ fn section_header(
     theme: &Theme,
 ) -> impl xilem::WidgetView<AppState> {
     let count_str = format!("{count}");
-    flex((
-        label(text)
-            .brush(theme.text_dim)
-            .text_size(10.0)
-            .weight(xilem::FontWeight::MEDIUM),
-        FlexSpacer::Flex(1.0),
-        label(count_str).brush(theme.text_muted).text_size(10.0),
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            label(text)
+                .text_size(10.0)
+                .weight(xilem::FontWeight::MEDIUM)
+                .color(theme.text_dim),
+            FlexSpacer::Flex(1.0),
+            label(count_str).text_size(10.0).color(theme.text_muted),
+        ),
+    )
     .direction(Axis::Horizontal)
     .cross_axis_alignment(CrossAxisAlignment::Center)
-    .gap(6.0)
+    .gap((6.0_f64).px())
 }
 
 fn placeholder_row(text: &'static str, theme: &Theme) -> impl xilem::WidgetView<AppState> {
-    sized_box(label(text).brush(theme.text_muted).text_size(11.0))
+    sized_box(label(text).text_size(11.0).color(theme.text_muted))
         .padding(Padding::from_vh(4.0, 6.0))
 }
 
@@ -287,9 +296,9 @@ fn file_row(
     let action_label = if staged { "−" } else { "+" };
     let action_btn = flat_button(
         xilem::view::label(action_label.to_string())
-            .brush(if staged { theme.removed } else { theme.added })
             .text_size(13.0)
-            .weight(xilem::FontWeight::MEDIUM),
+            .weight(xilem::FontWeight::MEDIUM)
+            .color(if staged { theme.removed } else { theme.added }),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -310,24 +319,27 @@ fn file_row(
     // button off-screen. Without this, e.g. a deeply nested file path
     // hides the [+] / [−] button and the row is unactionable.
     let path_label = label(path_str)
-        .brush(theme.text)
         .text_size(11.0)
-        .line_break_mode(xilem::LineBreaking::Clip);
+        .color(theme.text)
+        .line_break_mode(xilem::masonry::properties::LineBreaking::Clip);
 
-    let row_inner = flex((
-        sized_box(
-            label(letter.to_string())
-                .brush(color)
-                .text_size(11.0)
-                .weight(xilem::FontWeight::MEDIUM),
-        )
-        .width(14.0),
-        path_label.flex(1.0),
-        action_btn,
-    ))
+    let row_inner = flex(
+        Axis::Vertical,
+        (
+            sized_box(
+                label(letter.to_string())
+                    .text_size(11.0)
+                    .weight(xilem::FontWeight::MEDIUM)
+                    .color(color),
+            )
+            .width((14.0_f64).px()),
+            path_label.flex(1.0),
+            action_btn,
+        ),
+    )
     .direction(Axis::Horizontal)
     .cross_axis_alignment(CrossAxisAlignment::Center)
-    .gap(6.0);
+    .gap((6.0_f64).px());
 
     let row = sized_box(row_inner)
         .expand_width()
@@ -352,54 +364,57 @@ fn file_row(
 fn footer_view(s: &CommitModalState, theme: &Theme) -> Box<xilem::AnyWidgetView<AppState>> {
     let can_commit = !s.staged.is_empty() || s.amend;
 
-    flex((
-        FlexSpacer::Flex(1.0),
-        flat_button(
-            xilem::view::label("Cancel")
-                .brush(theme.text)
-                .text_size(12.0),
-            FlatStyle {
-                idle_bg: None,
-                hover_bg: theme.bg_hover,
-                active_bg: None,
-                radius: 4.0,
-                padding_v: 6.0,
-                padding_h: 14.0,
-            },
-            false,
-            |s: &mut AppState| s.modal = None,
-        ),
-        flat_button(
-            xilem::view::label(if s.amend { "Amend" } else { "Commit" })
-                .brush(if can_commit {
-                    theme.accent_fg
-                } else {
-                    theme.text_muted
-                })
-                .text_size(12.0)
-                .weight(xilem::FontWeight::MEDIUM),
-            FlatStyle {
-                idle_bg: if can_commit {
-                    Some(theme.accent)
-                } else {
-                    Some(theme.bg_panel_3)
+    flex(
+        Axis::Vertical,
+        (
+            FlexSpacer::Flex(1.0),
+            flat_button(
+                xilem::view::label("Cancel")
+                    .text_size(12.0)
+                    .color(theme.text),
+                FlatStyle {
+                    idle_bg: None,
+                    hover_bg: theme.bg_hover,
+                    active_bg: None,
+                    radius: 4.0,
+                    padding_v: 6.0,
+                    padding_h: 14.0,
                 },
-                hover_bg: if can_commit {
-                    theme.accent_hover
-                } else {
-                    theme.bg_hover
+                false,
+                |s: &mut AppState| s.modal = None,
+            ),
+            flat_button(
+                xilem::view::label(if s.amend { "Amend" } else { "Commit" })
+                    .text_size(12.0)
+                    .weight(xilem::FontWeight::MEDIUM)
+                    .color(if can_commit {
+                        theme.accent_fg
+                    } else {
+                        theme.text_muted
+                    }),
+                FlatStyle {
+                    idle_bg: if can_commit {
+                        Some(theme.accent)
+                    } else {
+                        Some(theme.bg_panel_3)
+                    },
+                    hover_bg: if can_commit {
+                        theme.accent_hover
+                    } else {
+                        theme.bg_hover
+                    },
+                    active_bg: None,
+                    radius: 4.0,
+                    padding_v: 6.0,
+                    padding_h: 14.0,
                 },
-                active_bg: None,
-                radius: 4.0,
-                padding_v: 6.0,
-                padding_h: 14.0,
-            },
-            false,
-            run_commit,
+                false,
+                run_commit,
+            ),
         ),
-    ))
+    )
     .direction(Axis::Horizontal)
-    .gap(8.0)
+    .gap((8.0_f64).px())
     .boxed()
 }
 

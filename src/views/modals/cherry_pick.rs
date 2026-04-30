@@ -4,7 +4,9 @@ use crate::app::{AppState, CherryPickModalState, Modal, Toast};
 use crate::git;
 use crate::theme::Theme;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
-use xilem::view::{flex, label, sized_box, textbox, Axis, CrossAxisAlignment, FlexSpacer, Padding};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::{Padding, Style as _};
+use xilem::view::{flex, label, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -38,24 +40,24 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 
 fn body_view(s: &CherryPickModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let oid_label = label("commit")
-        .brush(theme.text_dim)
         .text_size(10.0)
-        .weight(xilem::FontWeight::MEDIUM);
+        .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim);
     let oid_input = sized_box(
-        textbox(s.oid.clone(), |st: &mut AppState, new| {
+        text_input(s.oid.clone(), |st: &mut AppState, new| {
             if let Some(cs) = state_mut(st) {
                 cs.oid = new;
                 cs.error = None;
             }
         })
         .on_enter(|st: &mut AppState, _| run_cherry_pick(st))
-        .brush(super::input_text()),
+        .text_color(super::input_text()),
     )
     .expand_width()
-    .height(32.0)
-    .background(super::input_bg())
+    .height((32.0_f64).px())
+    .corner_radius(4.0)
+    .background_color(super::input_bg())
     .border(theme.border, 1.0)
-    .rounded(4.0)
     .padding(Padding::from_vh(4.0, 8.0));
 
     let no_commit_label = if s.no_commit {
@@ -65,12 +67,12 @@ fn body_view(s: &CherryPickModalState, theme: &Theme) -> impl xilem::WidgetView<
     };
     let no_commit_btn = flat_button(
         xilem::view::label(no_commit_label)
-            .brush(if s.no_commit {
+            .text_size(11.0)
+            .color(if s.no_commit {
                 theme.accent
             } else {
                 theme.text_muted
-            })
-            .text_size(11.0),
+            }),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -89,23 +91,26 @@ fn body_view(s: &CherryPickModalState, theme: &Theme) -> impl xilem::WidgetView<
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
         Some(err) => label(err.clone())
-            .brush(theme.removed)
             .text_size(11.0)
+            .color(theme.removed)
             .boxed(),
         None => label("").boxed(),
     };
 
-    flex((
-        oid_label,
-        oid_input,
-        FlexSpacer::Fixed(12.0),
-        no_commit_btn,
-        FlexSpacer::Fixed(8.0),
-        error_view,
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            oid_label,
+            oid_input,
+            FlexSpacer::Fixed((12.0_f64).px()),
+            no_commit_btn,
+            FlexSpacer::Fixed((8.0_f64).px()),
+            error_view,
+        ),
+    )
     .direction(Axis::Vertical)
     .cross_axis_alignment(CrossAxisAlignment::Start)
-    .gap(4.0)
+    .gap((4.0_f64).px())
 }
 
 fn run_cherry_pick(st: &mut AppState) {

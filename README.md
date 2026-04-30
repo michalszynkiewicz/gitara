@@ -35,6 +35,20 @@ The `git` CLI must be on your `PATH`. gitara uses it for every write
 operation (commit, push, fetch, branch, tag, …) so your `~/.gitconfig`,
 hooks, signing key, and credential helpers all just work.
 
+## Theme
+
+gitara starts in **dark** mode by default. Click the **Dark** / **Light**
+button in the top-right of the titlebar to switch — most of the UI updates
+live, but a few label colors stay on the old palette until the next
+restart, so launch gitara again to apply the new theme cleanly.
+
+To force a theme at startup (skipping the persisted preference):
+
+```sh
+GITARA_DARK=1 gitara     # dark
+GITARA_LIGHT=1 gitara    # light
+```
+
 ## Linux first run
 
 On its first launch on Linux, gitara writes a desktop entry and icons

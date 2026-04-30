@@ -7,14 +7,13 @@ use std::any::TypeId;
 
 use accesskit::{Node, Role};
 use masonry::core::{
-    AccessCtx, AccessEvent, BoxConstraints, EventCtx, LayoutCtx, PaintCtx, PointerEvent,
-    PropertiesMut, PropertiesRef, QueryCtx, RegisterCtx, TextEvent, Update, UpdateCtx, Widget,
+    AccessCtx, AccessEvent, BoxConstraints, ChildrenIds, EventCtx, LayoutCtx, NoAction, PaintCtx,
+    PointerEvent, PropertiesMut, PropertiesRef, RegisterCtx, TextEvent, Update, UpdateCtx, Widget,
     WidgetId,
 };
 use masonry::kurbo::{Affine, BezPath, Circle, Line, Point, Size, Stroke};
 use masonry::peniko::{Color, Fill};
 use masonry::vello::Scene;
-use smallvec::{smallvec, SmallVec};
 use tracing::{trace_span, Span};
 
 use crate::graph_layout::RowLayout;
@@ -63,30 +62,38 @@ impl GraphGutter {
 }
 
 impl Widget for GraphGutter {
+    type Action = NoAction;
+
     fn on_pointer_event(
         &mut self,
-        _ctx: &mut EventCtx,
+        _ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         _event: &PointerEvent,
     ) {
     }
     fn on_text_event(
         &mut self,
-        _ctx: &mut EventCtx,
+        _ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         _event: &TextEvent,
     ) {
     }
     fn on_access_event(
         &mut self,
-        _ctx: &mut EventCtx,
+        _ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         _event: &AccessEvent,
     ) {
     }
-    fn update(&mut self, _ctx: &mut UpdateCtx, _props: &mut PropertiesMut<'_>, _event: &Update) {}
-    fn register_children(&mut self, _ctx: &mut RegisterCtx) {}
-    fn property_changed(&mut self, _ctx: &mut UpdateCtx, _property_type: TypeId) {}
+    fn update(
+        &mut self,
+        _ctx: &mut UpdateCtx<'_>,
+        _props: &mut PropertiesMut<'_>,
+        _event: &Update,
+    ) {
+    }
+    fn register_children(&mut self, _ctx: &mut RegisterCtx<'_>) {}
+    fn property_changed(&mut self, _ctx: &mut UpdateCtx<'_>, _property_type: TypeId) {}
 
     /// Hover/click targeting: the gutter lives inside the row's
     /// ClickableBox, but the bare flex / sized_box wrappers in the row
@@ -98,7 +105,7 @@ impl Widget for GraphGutter {
 
     fn layout(
         &mut self,
-        _ctx: &mut LayoutCtx,
+        _ctx: &mut LayoutCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         bc: &BoxConstraints,
     ) -> Size {
@@ -124,7 +131,7 @@ impl Widget for GraphGutter {
         Size::new(w, h)
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, _props: &PropertiesRef<'_>, scene: &mut Scene) {
+    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
         let row = &self.style.row;
         // Row height is whatever flex assigned us (from CrossAxisAlignment::
         // Fill on the parent). The node always sits at vertical centre so
@@ -221,18 +228,18 @@ impl Widget for GraphGutter {
 
     fn accessibility(
         &mut self,
-        _ctx: &mut AccessCtx,
+        _ctx: &mut AccessCtx<'_>,
         _props: &PropertiesRef<'_>,
         _node: &mut Node,
     ) {
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
-        smallvec![]
+    fn children_ids(&self) -> ChildrenIds {
+        ChildrenIds::new()
     }
 
-    fn make_trace_span(&self, ctx: &QueryCtx<'_>) -> Span {
-        trace_span!("GraphGutter", id = ctx.widget_id().trace())
+    fn make_trace_span(&self, id: WidgetId) -> Span {
+        trace_span!("GraphGutter", id = id.trace())
     }
 }
 
@@ -254,7 +261,7 @@ fn diag_curve(from: Point, to: Point) -> BezPath {
 
 // --- MARK: XILEM VIEW ---
 
-use xilem::core::{DynMessage, MessageResult, Mut, View, ViewId, ViewMarker};
+use xilem::core::{MessageContext, MessageResult, Mut, View, ViewMarker};
 use xilem::{Pod, ViewCtx};
 
 pub fn graph_gutter<State, Action>(style: GutterStyle) -> GraphGutterView<State, Action> {
@@ -280,8 +287,8 @@ where
     type Element = Pod<GraphGutter>;
     type ViewState = ();
 
-    fn build(&self, ctx: &mut ViewCtx) -> (Self::Element, Self::ViewState) {
-        let pod = ctx.new_pod(GraphGutter::new(self.style.clone()));
+    fn build(&self, ctx: &mut ViewCtx, _: &mut State) -> (Self::Element, Self::ViewState) {
+        let pod = ctx.create_pod(GraphGutter::new(self.style.clone()));
         (pod, ())
     }
 
@@ -290,7 +297,8 @@ where
         prev: &Self,
         _: &mut Self::ViewState,
         _ctx: &mut ViewCtx,
-        mut element: Mut<Self::Element>,
+        mut element: Mut<'_, Self::Element>,
+        _: &mut State,
     ) {
         if self.style != prev.style {
             element.widget.style = self.style.clone();
@@ -299,17 +307,22 @@ where
         }
     }
 
-    fn teardown(&self, _: &mut Self::ViewState, ctx: &mut ViewCtx, element: Mut<Self::Element>) {
+    fn teardown(
+        &self,
+        _: &mut Self::ViewState,
+        ctx: &mut ViewCtx,
+        element: Mut<'_, Self::Element>,
+    ) {
         ctx.teardown_leaf(element);
     }
 
     fn message(
         &self,
         _: &mut Self::ViewState,
-        _id_path: &[ViewId],
-        message: DynMessage,
+        _message: &mut MessageContext,
+        _: Mut<'_, Self::Element>,
         _app_state: &mut State,
     ) -> MessageResult<Action> {
-        MessageResult::Stale(message)
+        MessageResult::Stale
     }
 }

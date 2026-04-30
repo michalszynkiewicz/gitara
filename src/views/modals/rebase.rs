@@ -3,6 +3,8 @@
 use crate::app::{AppState, Modal, RebaseModalState, Toast};
 use crate::git;
 use crate::theme::Theme;
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::Style as _;
 use xilem::view::{flex, label, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
@@ -35,14 +37,14 @@ fn body_view(
     theme: &Theme,
 ) -> impl xilem::WidgetView<AppState> {
     let header = label("onto")
-        .brush(theme.text_dim)
         .text_size(10.0)
-        .weight(xilem::FontWeight::MEDIUM);
+        .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim);
 
     let chips: Vec<_> = if branches.is_empty() {
         vec![label("(no other branches)")
-            .brush(theme.text_muted)
             .text_size(12.0)
+            .color(theme.text_muted)
             .boxed()]
     } else {
         branches
@@ -60,28 +62,31 @@ fn body_view(
     };
 
     let warning = label("this rewrites your current branch — push will require --force-with-lease")
-        .brush(theme.warn)
-        .text_size(11.0);
+        .text_size(11.0)
+        .color(theme.warn);
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
         Some(err) => label(err.clone())
-            .brush(theme.removed)
             .text_size(11.0)
+            .color(theme.removed)
             .boxed(),
         None => label("").boxed(),
     };
 
-    flex((
-        header,
-        flex(chips).direction(Axis::Horizontal).gap(6.0),
-        FlexSpacer::Fixed(12.0),
-        warning,
-        FlexSpacer::Fixed(8.0),
-        error_view,
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            header,
+            flex(Axis::Horizontal, chips).gap((6.0_f64).px()),
+            FlexSpacer::Fixed((12.0_f64).px()),
+            warning,
+            FlexSpacer::Fixed((8.0_f64).px()),
+            error_view,
+        ),
+    )
     .direction(Axis::Vertical)
     .cross_axis_alignment(CrossAxisAlignment::Start)
-    .gap(4.0)
+    .gap((4.0_f64).px())
 }
 
 fn run_rebase(st: &mut AppState) {

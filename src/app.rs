@@ -331,8 +331,12 @@ pub struct AppState {
 
 impl AppState {
     pub fn boot(settings: Settings) -> anyhow::Result<Self> {
+        // Theme override: GITARA_DARK forces dark, GITARA_LIGHT forces light.
+        // If neither is set, the persisted setting wins (defaults to Dark).
         let theme_mode = if std::env::var_os("GITARA_DARK").is_some() {
             ThemeMode::Dark
+        } else if std::env::var_os("GITARA_LIGHT").is_some() {
+            ThemeMode::Light
         } else {
             settings.theme
         };
@@ -569,8 +573,10 @@ impl AppState {
 /// Root view — titlebar, toolbar, body (sidebar + graph + inspector), statusbar.
 /// Modal overlays (when `state.modal` is set) are layered on top via zstack.
 pub fn root_view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
+    use xilem::masonry::properties::types::AsUnit as _;
+    use xilem::style::{Padding, Style as _};
     use xilem::view::{
-        flex, sized_box, zstack, Axis, CrossAxisAlignment, FlexExt as _, MainAxisAlignment, Padding,
+        flex, sized_box, zstack, Axis, CrossAxisAlignment, FlexExt as _, MainAxisAlignment,
     };
     use xilem::WidgetView as _;
 
@@ -579,47 +585,50 @@ pub fn root_view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     let inspector_w = state.inspector.width;
 
     let titlebar = sized_box(views::titlebar::view(state))
-        .height(30.0)
+        .height((30.0_f64).px())
         .expand_width()
-        .background(theme.bg_titlebar)
+        .background_color(theme.bg_titlebar)
         .padding(Padding::horizontal(12.0));
 
     let toolbar = sized_box(views::toolbar::view(state))
-        .height(36.0)
+        .height((36.0_f64).px())
         .expand_width()
-        .background(theme.bg_panel)
+        .background_color(theme.bg_panel)
         .padding(Padding::horizontal(10.0));
 
     let sidebar_panel = (!state.sidebar_collapsed).then(|| {
         sized_box(views::sidebar::view(state))
-            .width(sidebar_w)
+            .width((sidebar_w).px())
             .expand_height()
-            .background(theme.bg_panel_2)
+            .background_color(theme.bg_panel_2)
             .border(theme.border, 1.0)
             .padding(Padding::from_vh(10.0, 10.0))
     });
 
     let graph_panel = sized_box(views::graph::view(state))
         .expand()
-        .background(theme.bg_panel);
+        .background_color(theme.bg_panel);
 
     let inspector_panel = (!state.inspector.collapsed).then(|| {
         sized_box(views::inspector::view(state))
-            .width(inspector_w)
+            .width((inspector_w).px())
             .expand_height()
-            .background(theme.bg_panel_2)
+            .background_color(theme.bg_panel_2)
             .border(theme.border, 1.0)
     });
 
-    let body = flex((sidebar_panel, graph_panel.flex(1.0), inspector_panel))
-        .direction(Axis::Horizontal)
-        .cross_axis_alignment(CrossAxisAlignment::Fill)
-        .gap(0.0);
+    let body = flex(
+        Axis::Vertical,
+        (sidebar_panel, graph_panel.flex(1.0), inspector_panel),
+    )
+    .direction(Axis::Horizontal)
+    .cross_axis_alignment(CrossAxisAlignment::Fill)
+    .gap((0.0_f64).px());
 
     let statusbar = sized_box(views::statusbar::view(state))
-        .height(22.0)
+        .height((22.0_f64).px())
         .expand_width()
-        .background(theme.bg_titlebar)
+        .background_color(theme.bg_titlebar)
         .padding(Padding::horizontal(10.0));
 
     let toast: Option<_> = state.toast.as_ref().map(|t| {
@@ -628,45 +637,51 @@ pub fn root_view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
             ToastKind::Error => (theme.accent_fg, theme.removed),
         };
         sized_box(
-            flex((
-                xilem::view::label(t.message.clone())
-                    .brush(fg)
-                    .text_size(12.0)
-                    .weight(xilem::FontWeight::MEDIUM),
-                xilem::view::FlexSpacer::Flex(1.0),
-                crate::widgets::flat_button::flat_button(
-                    xilem::view::label("dismiss").brush(fg).text_size(11.0),
-                    crate::widgets::flat_button::FlatStyle {
-                        idle_bg: None,
-                        hover_bg: vello::peniko::Color::from_rgba8(255, 255, 255, 40),
-                        active_bg: None,
-                        radius: 3.0,
-                        padding_v: 2.0,
-                        padding_h: 8.0,
-                    },
-                    false,
-                    |s: &mut AppState| s.toast = None,
+            flex(
+                Axis::Vertical,
+                (
+                    xilem::view::label(t.message.clone())
+                        .text_size(12.0)
+                        .weight(xilem::FontWeight::MEDIUM)
+                        .color(fg),
+                    xilem::view::FlexSpacer::Flex(1.0),
+                    crate::widgets::flat_button::flat_button(
+                        xilem::view::label("dismiss").text_size(11.0).color(fg),
+                        crate::widgets::flat_button::FlatStyle {
+                            idle_bg: None,
+                            hover_bg: vello::peniko::Color::from_rgba8(255, 255, 255, 40),
+                            active_bg: None,
+                            radius: 3.0,
+                            padding_v: 2.0,
+                            padding_h: 8.0,
+                        },
+                        false,
+                        |s: &mut AppState| s.toast = None,
+                    ),
                 ),
-            ))
+            )
             .direction(Axis::Horizontal)
             .cross_axis_alignment(CrossAxisAlignment::Center)
-            .gap(8.0),
+            .gap((8.0_f64).px()),
         )
-        .height(28.0)
+        .height((28.0_f64).px())
         .expand_width()
-        .background(bg)
+        .background_color(bg)
         .padding(Padding::horizontal(12.0))
     });
 
     let main = sized_box(
-        flex((titlebar, toolbar, body.flex(1.0), toast, statusbar))
-            .direction(Axis::Vertical)
-            .cross_axis_alignment(CrossAxisAlignment::Fill)
-            .main_axis_alignment(MainAxisAlignment::Start)
-            .gap(0.0),
+        flex(
+            Axis::Vertical,
+            (titlebar, toolbar, body.flex(1.0), toast, statusbar),
+        )
+        .direction(Axis::Vertical)
+        .cross_axis_alignment(CrossAxisAlignment::Fill)
+        .main_axis_alignment(MainAxisAlignment::Start)
+        .gap((0.0_f64).px()),
     )
     .expand()
-    .background(theme.bg);
+    .background_color(theme.bg);
 
     // Modal and ctx-menu must share one Option slot — Xilem 0.3's ZStack
     // panics when two sibling Option<View> children change shape in the
@@ -685,5 +700,6 @@ pub fn root_view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     // TopLeft alignment so the ctx-menu's spacer-based positioning is
     // honored verbatim. `main` is full-window so alignment is moot for it,
     // and `modal` wraps its own ZStack with Center alignment.
-    zstack((main.boxed(), overlay)).alignment(xilem::view::Alignment::TopLeft)
+    zstack((main.boxed(), overlay))
+        .alignment(xilem::masonry::properties::types::UnitPoint::TOP_LEFT)
 }

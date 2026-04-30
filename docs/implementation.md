@@ -2,10 +2,9 @@
 
 ## Stack
 
-* **UI**: Xilem 0.3 + Masonry 0.3 (locally vendored at
-  `../vendor/masonry`, with a couple of small patches kept under the
-  `[patch.crates-io]` section of `Cargo.toml`).
-* **Renderer**: Vello 0.5 + wgpu, GPU-accelerated.
+* **UI**: Xilem 0.4 + Masonry 0.4 (both straight from crates.io —
+  no local fork or patch).
+* **Renderer**: Vello 0.6 + wgpu, GPU-accelerated.
 * **Git reads**: `gix` (commit log, branches/remotes/tags/refs, head
   state) and `git2` (diffs, status, test fixtures).
 * **Git writes**: shell out to the `git` CLI.
@@ -91,7 +90,8 @@ All optional. Most are for development.
 | Var | Purpose |
 |---|---|
 | `GITARA_REPO=<path>` | Open this repo instead of the current directory. |
-| `GITARA_DARK=1` | Force dark theme (overrides persisted setting). |
+| `GITARA_DARK=1` | Force dark theme at startup (overrides persisted setting). |
+| `GITARA_LIGHT=1` | Force light theme at startup (overrides persisted setting). |
 | `GITARA_HEADLESS=1` | Borderless fullscreen for screenshot harnesses inside Xvfb. |
 | `GITARA_SELECT=<sha>` | Pre-select a commit by oid prefix at startup. |
 | `GITARA_MODAL=<kind>` | Open a modal at startup (`commit`, `branch`, `tag`, …). |

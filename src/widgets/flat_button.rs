@@ -9,15 +9,13 @@ use std::any::TypeId;
 
 use accesskit::{Node, Role};
 use masonry::core::{
-    AccessCtx, AccessEvent, Action, BoxConstraints, EventCtx, LayoutCtx, PaintCtx, PointerEvent,
-    PropertiesMut, PropertiesRef, QueryCtx, RegisterCtx, TextEvent, Update, UpdateCtx, Widget,
-    WidgetId, WidgetMut, WidgetPod,
+    AccessCtx, AccessEvent, BoxConstraints, ChildrenIds, EventCtx, LayoutCtx, NewWidget, PaintCtx,
+    PointerButton, PointerButtonEvent, PointerEvent, PropertiesMut, PropertiesRef, RegisterCtx,
+    TextEvent, Update, UpdateCtx, Widget, WidgetId, WidgetMut, WidgetPod,
 };
 use masonry::kurbo::{Affine, Point, RoundedRect, Size};
 use masonry::peniko::{Color, Fill};
 use masonry::vello::Scene;
-use masonry::widgets::Label;
-use smallvec::{smallvec, SmallVec};
 use tracing::{trace_span, Span};
 
 // --- MARK: STYLE ---
@@ -45,25 +43,41 @@ impl Default for FlatStyle {
     }
 }
 
+/// Action submitted when the user clicks/keys the button.
+///
+/// `button` carries the originating mouse button (or `None` for keyboard /
+/// touch activation). Currently unused by the View layer's callback — the
+/// callback only fires for the primary button equivalent — but kept on the
+/// action so future call sites that care can read it.
+#[derive(Clone, Debug)]
+pub struct FlatButtonPress {
+    #[expect(dead_code, reason = "kept for future callers; see doc comment")]
+    pub button: Option<PointerButton>,
+}
+
 // --- MARK: WIDGET ---
 
 pub struct FlatButton {
-    pub(crate) label: WidgetPod<Label>,
+    pub(crate) child: WidgetPod<dyn Widget>,
     pub(crate) style: FlatStyle,
     pub(crate) active: bool,
 }
 
 impl FlatButton {
-    pub fn from_label_pod(label: WidgetPod<Label>, style: FlatStyle, active: bool) -> Self {
+    pub fn from_child(
+        child: NewWidget<impl Widget + ?Sized>,
+        style: FlatStyle,
+        active: bool,
+    ) -> Self {
         Self {
-            label,
+            child: child.erased().to_pod(),
             style,
             active,
         }
     }
 
-    pub fn label_mut<'t>(this: &'t mut WidgetMut<'_, Self>) -> WidgetMut<'t, Label> {
-        this.ctx.get_mut(&mut this.widget.label)
+    pub fn child_mut<'t>(this: &'t mut WidgetMut<'_, Self>) -> WidgetMut<'t, dyn Widget> {
+        this.ctx.get_mut(&mut this.widget.child)
     }
 
     pub fn set_style(this: &mut WidgetMut<'_, Self>, style: FlatStyle) {
@@ -80,14 +94,16 @@ impl FlatButton {
 }
 
 impl Widget for FlatButton {
+    type Action = FlatButtonPress;
+
     fn on_pointer_event(
         &mut self,
-        ctx: &mut EventCtx,
+        ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         event: &PointerEvent,
     ) {
         match event {
-            PointerEvent::Down { .. } => {
+            PointerEvent::Down(..) => {
                 if !ctx.is_disabled() {
                     ctx.capture_pointer();
                     // Stop bubbling so an ancestor ClickableBox (e.g. the
@@ -97,9 +113,9 @@ impl Widget for FlatButton {
                     ctx.request_paint_only();
                 }
             }
-            PointerEvent::Up { button, .. } => {
+            PointerEvent::Up(PointerButtonEvent { button, .. }) => {
                 if ctx.is_pointer_capture_target() && ctx.is_hovered() && !ctx.is_disabled() {
-                    ctx.submit_action(Action::ButtonPressed(*button));
+                    ctx.submit_action::<Self::Action>(FlatButtonPress { button: *button });
                 }
                 ctx.request_paint_only();
             }
@@ -109,7 +125,7 @@ impl Widget for FlatButton {
 
     fn on_text_event(
         &mut self,
-        _ctx: &mut EventCtx,
+        _ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         _event: &TextEvent,
     ) {
@@ -117,16 +133,16 @@ impl Widget for FlatButton {
 
     fn on_access_event(
         &mut self,
-        ctx: &mut EventCtx,
+        ctx: &mut EventCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         event: &AccessEvent,
     ) {
-        if ctx.target() == ctx.widget_id() && event.action == accesskit::Action::Click {
-            ctx.submit_action(Action::ButtonPressed(None));
+        if event.action == accesskit::Action::Click {
+            ctx.submit_action::<Self::Action>(FlatButtonPress { button: None });
         }
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, _props: &mut PropertiesMut<'_>, event: &Update) {
+    fn update(&mut self, ctx: &mut UpdateCtx<'_>, _props: &mut PropertiesMut<'_>, event: &Update) {
         if matches!(
             event,
             Update::HoveredChanged(_) | Update::FocusChanged(_) | Update::DisabledChanged(_)
@@ -135,22 +151,22 @@ impl Widget for FlatButton {
         }
     }
 
-    fn register_children(&mut self, ctx: &mut RegisterCtx) {
-        ctx.register_child(&mut self.label);
+    fn register_children(&mut self, ctx: &mut RegisterCtx<'_>) {
+        ctx.register_child(&mut self.child);
     }
 
-    fn property_changed(&mut self, _ctx: &mut UpdateCtx, _property_type: TypeId) {}
+    fn property_changed(&mut self, _ctx: &mut UpdateCtx<'_>, _property_type: TypeId) {}
 
     fn layout(
         &mut self,
-        ctx: &mut LayoutCtx,
+        ctx: &mut LayoutCtx<'_>,
         _props: &mut PropertiesMut<'_>,
         bc: &BoxConstraints,
     ) -> Size {
         let pad_h = self.style.padding_h;
         let pad_v = self.style.padding_v;
         let inner_bc = bc.shrink((pad_h * 2.0, pad_v * 2.0));
-        let child_size = ctx.run_layout(&mut self.label, &inner_bc);
+        let child_size = ctx.run_layout(&mut self.child, &inner_bc);
 
         let our_size = Size::new(
             child_size.width + pad_h * 2.0,
@@ -158,13 +174,13 @@ impl Widget for FlatButton {
         );
         let our_size = bc.constrain(our_size);
 
-        let baseline = ctx.child_baseline_offset(&self.label);
-        ctx.place_child(&mut self.label, Point::new(pad_h, pad_v));
+        let baseline = ctx.child_baseline_offset(&self.child);
+        ctx.place_child(&mut self.child, Point::new(pad_h, pad_v));
         ctx.set_baseline_offset(baseline + pad_v);
         our_size
     }
 
-    fn paint(&mut self, ctx: &mut PaintCtx, _props: &PropertiesRef<'_>, scene: &mut Scene) {
+    fn paint(&mut self, ctx: &mut PaintCtx<'_>, _props: &PropertiesRef<'_>, scene: &mut Scene) {
         let is_hovered = ctx.is_hovered();
         let size = ctx.size();
 
@@ -186,77 +202,84 @@ impl Widget for FlatButton {
         Role::Button
     }
 
-    fn accessibility(&mut self, _ctx: &mut AccessCtx, _props: &PropertiesRef<'_>, node: &mut Node) {
+    fn accessibility(
+        &mut self,
+        _ctx: &mut AccessCtx<'_>,
+        _props: &PropertiesRef<'_>,
+        node: &mut Node,
+    ) {
         node.add_action(accesskit::Action::Click);
     }
 
-    fn children_ids(&self) -> SmallVec<[WidgetId; 16]> {
-        smallvec![self.label.id()]
+    fn children_ids(&self) -> ChildrenIds {
+        ChildrenIds::from_slice(&[self.child.id()])
     }
 
-    fn make_trace_span(&self, ctx: &QueryCtx<'_>) -> Span {
-        trace_span!("FlatButton", id = ctx.widget_id().trace())
+    fn make_trace_span(&self, id: WidgetId) -> Span {
+        trace_span!("FlatButton", id = id.trace())
     }
 }
 
 // --- MARK: XILEM VIEW ---
 
-use xilem::core::{DynMessage, MessageResult, Mut, View, ViewId, ViewMarker, ViewPathTracker};
-use xilem::{Pod, ViewCtx};
+use xilem::core::{MessageContext, MessageResult, Mut, View, ViewId, ViewMarker, ViewPathTracker};
+use xilem::{Pod, ViewCtx, WidgetView};
 
-/// Build a flat button view. `label` may be a plain string or a pre-styled
-/// `xilem::view::Label`.
-pub fn flat_button<State, Action, F>(
-    label: impl Into<xilem::view::Label>,
+/// Build a flat button view. `child` is any widget view (typically a styled
+/// label) that becomes the button's content.
+pub fn flat_button<State, Action, V, F>(
+    child: V,
     style: FlatStyle,
     active: bool,
     callback: F,
-) -> FlatButtonView<F>
+) -> FlatButtonView<V, F, State, Action>
 where
+    V: WidgetView<State, Action>,
     F: Fn(&mut State) -> Action + Send + Sync + 'static,
 {
     FlatButtonView {
-        label: label.into(),
+        child,
         style,
         active,
         callback,
-        _phantom: std::marker::PhantomData,
+        phantom: std::marker::PhantomData,
     }
 }
 
 #[must_use = "View values do nothing unless provided to Xilem."]
-pub struct FlatButtonView<F> {
-    label: xilem::view::Label,
+pub struct FlatButtonView<V, F, State, Action> {
+    child: V,
     style: FlatStyle,
     active: bool,
     callback: F,
-    _phantom: std::marker::PhantomData<F>,
+    phantom: std::marker::PhantomData<fn() -> (State, Action)>,
 }
 
-const LABEL_VIEW_ID: ViewId = ViewId::new(0);
+const CHILD_VIEW_ID: ViewId = ViewId::new(0);
 
-impl<F> ViewMarker for FlatButtonView<F> {}
+impl<V, F, State, Action> ViewMarker for FlatButtonView<V, F, State, Action> {}
 
-impl<F, State, Action> View<State, Action, ViewCtx> for FlatButtonView<F>
+impl<V, F, State, Action> View<State, Action, ViewCtx> for FlatButtonView<V, F, State, Action>
 where
+    V: WidgetView<State, Action>,
     F: Fn(&mut State) -> Action + Send + Sync + 'static,
     State: 'static,
     Action: 'static,
 {
     type Element = Pod<FlatButton>;
-    type ViewState = ();
+    type ViewState = V::ViewState;
 
-    fn build(&self, ctx: &mut ViewCtx) -> (Self::Element, Self::ViewState) {
-        let (child, ()) = ctx.with_id(LABEL_VIEW_ID, |ctx| {
-            View::<State, Action, _>::build(&self.label, ctx)
-        });
-        ctx.with_leaf_action_widget(|ctx| {
-            ctx.new_pod(FlatButton::from_label_pod(
-                child.into_widget_pod(),
+    fn build(&self, ctx: &mut ViewCtx, app_state: &mut State) -> (Self::Element, Self::ViewState) {
+        let (child, child_state) =
+            ctx.with_id(CHILD_VIEW_ID, |ctx| self.child.build(ctx, app_state));
+        let pod = ctx.with_action_widget(|ctx| {
+            ctx.create_pod(FlatButton::from_child(
+                child.new_widget,
                 self.style,
                 self.active,
             ))
-        })
+        });
+        (pod, child_state)
     }
 
     fn rebuild(
@@ -264,16 +287,13 @@ where
         prev: &Self,
         state: &mut Self::ViewState,
         ctx: &mut ViewCtx,
-        mut element: Mut<Self::Element>,
+        mut element: Mut<'_, Self::Element>,
+        app_state: &mut State,
     ) {
-        ctx.with_id(LABEL_VIEW_ID, |ctx| {
-            View::<State, Action, _>::rebuild(
-                &self.label,
-                &prev.label,
-                state,
-                ctx,
-                FlatButton::label_mut(&mut element),
-            );
+        ctx.with_id(CHILD_VIEW_ID, |ctx| {
+            let mut child = FlatButton::child_mut(&mut element);
+            self.child
+                .rebuild(&prev.child, state, ctx, child.downcast(), app_state);
         });
         if self.style != prev.style {
             FlatButton::set_style(&mut element, self.style);
@@ -285,41 +305,41 @@ where
 
     fn teardown(
         &self,
-        _: &mut Self::ViewState,
+        view_state: &mut Self::ViewState,
         ctx: &mut ViewCtx,
-        mut element: Mut<Self::Element>,
+        mut element: Mut<'_, Self::Element>,
     ) {
-        ctx.with_id(LABEL_VIEW_ID, |ctx| {
-            View::<State, Action, _>::teardown(
-                &self.label,
-                &mut (),
-                ctx,
-                FlatButton::label_mut(&mut element),
-            );
+        ctx.with_id(CHILD_VIEW_ID, |ctx| {
+            let mut child = FlatButton::child_mut(&mut element);
+            self.child.teardown(view_state, ctx, child.downcast());
         });
         ctx.teardown_leaf(element);
     }
 
     fn message(
         &self,
-        _: &mut Self::ViewState,
-        id_path: &[ViewId],
-        message: DynMessage,
+        view_state: &mut Self::ViewState,
+        message: &mut MessageContext,
+        mut element: Mut<'_, Self::Element>,
         app_state: &mut State,
     ) -> MessageResult<Action> {
-        match id_path.split_first() {
-            Some((&LABEL_VIEW_ID, rest)) => self.label.message(&mut (), rest, message, app_state),
-            None => match message.downcast::<masonry::core::Action>() {
-                Ok(action) => {
-                    if matches!(*action, masonry::core::Action::ButtonPressed(_)) {
-                        MessageResult::Action((self.callback)(app_state))
-                    } else {
-                        MessageResult::Stale(DynMessage(action))
-                    }
+        match message.take_first() {
+            Some(CHILD_VIEW_ID) => {
+                let mut child = FlatButton::child_mut(&mut element);
+                self.child
+                    .message(view_state, message, child.downcast(), app_state)
+            }
+            None => match message.take_message::<FlatButtonPress>() {
+                Some(_press) => MessageResult::Action((self.callback)(app_state)),
+                None => {
+                    tracing::error!("Wrong message type in FlatButton::message: {message:?}");
+                    MessageResult::Stale
                 }
-                Err(m) => MessageResult::Stale(m),
             },
-            _ => MessageResult::Stale(message),
+            _ => {
+                tracing::warn!("Got unexpected id path in FlatButton::message");
+                MessageResult::Stale
+            }
         }
     }
 }

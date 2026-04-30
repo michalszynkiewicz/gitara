@@ -10,7 +10,9 @@ use crate::widgets::flat_button::{flat_button, FlatStyle};
 use crate::widgets::flow::flow;
 use crate::widgets::graph_gutter::{graph_gutter as graph_gutter_view, GutterStyle};
 use masonry::core::PointerButton;
-use xilem::view::{flex, label, portal, sized_box, Axis, FlexExt as _, FlexSpacer, Padding};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::{Padding, Style as _};
+use xilem::view::{flex, label, portal, sized_box, Axis, FlexExt as _, FlexSpacer};
 use xilem::WidgetView as _;
 
 // Graph geometry. Pitch + row height stay here because the row's
@@ -32,31 +34,37 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     let all_refs = state.show_all_refs;
     let wrap = state.wrap_subjects;
 
-    flex((
-        sized_box(
-            flex((
-                tab(&theme, "History", is_history, |s: &mut AppState| {
-                    s.view = View::History
-                }),
-                tab(&theme, "Reflog", !is_history, |s: &mut AppState| {
-                    s.view = View::Reflog
-                }),
-                FlexSpacer::Flex(1.0),
-                wrap_toggle(&theme, wrap),
-                all_refs_toggle(&theme, all_refs),
-            ))
-            .direction(Axis::Horizontal)
-            .gap(2.0),
-        )
-        .expand_width()
-        .padding(Padding::from_vh(6.0, 10.0)),
-        // Portal wraps the History/Reflog body so it scrolls within the
-        // panel instead of overflowing. .flex(1.0) makes it consume the
-        // remaining vertical space below the tab strip.
-        portal(body).flex(1.0),
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            sized_box(
+                flex(
+                    Axis::Vertical,
+                    (
+                        tab(&theme, "History", is_history, |s: &mut AppState| {
+                            s.view = View::History
+                        }),
+                        tab(&theme, "Reflog", !is_history, |s: &mut AppState| {
+                            s.view = View::Reflog
+                        }),
+                        FlexSpacer::Flex(1.0),
+                        wrap_toggle(&theme, wrap),
+                        all_refs_toggle(&theme, all_refs),
+                    ),
+                )
+                .direction(Axis::Horizontal)
+                .gap((2.0_f64).px()),
+            )
+            .expand_width()
+            .padding(Padding::from_vh(6.0, 10.0)),
+            // Portal wraps the History/Reflog body so it scrolls within the
+            // panel instead of overflowing. .flex(1.0) makes it consume the
+            // remaining vertical space below the tab strip.
+            portal(body).flex(1.0),
+        ),
+    )
     .direction(Axis::Vertical)
-    .gap(0.0)
+    .gap((0.0_f64).px())
 }
 
 /// Pill that toggles per-row subject wrapping. Off = clip at column;
@@ -64,9 +72,11 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 fn wrap_toggle(theme: &Theme, on: bool) -> impl xilem::WidgetView<AppState> {
     let label_text = if on { "✓ wrap" } else { "wrap" };
     flat_button(
-        xilem::view::label(label_text)
-            .brush(if on { theme.accent } else { theme.text_muted })
-            .text_size(11.0),
+        xilem::view::label(label_text).text_size(11.0).color(if on {
+            theme.accent
+        } else {
+            theme.text_muted
+        }),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -90,9 +100,11 @@ fn all_refs_toggle(theme: &Theme, on: bool) -> impl xilem::WidgetView<AppState> 
         "all branches"
     };
     flat_button(
-        xilem::view::label(label_text)
-            .brush(if on { theme.accent } else { theme.text_muted })
-            .text_size(11.0),
+        xilem::view::label(label_text).text_size(11.0).color(if on {
+            theme.accent
+        } else {
+            theme.text_muted
+        }),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -124,7 +136,7 @@ where
         theme.text_muted
     };
     flat_button(
-        xilem::view::label(text).brush(fg).text_size(12.0),
+        xilem::view::label(text).text_size(12.0).color(fg),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -159,7 +171,7 @@ fn history_table(state: &AppState) -> impl xilem::WidgetView<AppState> {
         rows.push(commit_row(c, rl, lane_count, &theme, selected.as_deref(), wrap).boxed());
     }
 
-    sized_box(flex(rows).direction(Axis::Vertical).gap(0.0))
+    sized_box(flex(Axis::Vertical, rows).gap((0.0_f64).px()))
         .expand_width()
         .padding(Padding::from_vh(0.0, 8.0))
 }
@@ -174,27 +186,30 @@ fn working_tree_row(
 ) -> impl xilem::WidgetView<AppState> {
     use xilem::view::{flex, label, Axis, CrossAxisAlignment};
 
-    let gutter = sized_box(flex(()))
-        .width(lane_count as f64 * LANE_PITCH)
-        .height(ROW_H);
+    let gutter = sized_box(flex(Axis::Vertical, ()))
+        .width((lane_count as f64 * LANE_PITCH).px())
+        .height((ROW_H).px());
     let summary = status.summary();
 
     let row_inner = sized_box(
-        flex((
-            gutter,
-            sized_box(
-                label("●  working tree")
-                    .brush(theme.warn)
-                    .text_size(12.0)
-                    .weight(xilem::FontWeight::MEDIUM),
-            )
-            .width(160.0),
-            label(summary).brush(theme.text).text_size(12.0),
-            FlexSpacer::Flex(1.0),
-        ))
+        flex(
+            Axis::Vertical,
+            (
+                gutter,
+                sized_box(
+                    label("●  working tree")
+                        .text_size(12.0)
+                        .weight(xilem::FontWeight::MEDIUM)
+                        .color(theme.warn),
+                )
+                .width((160.0_f64).px()),
+                label(summary).text_size(12.0).color(theme.text),
+                FlexSpacer::Flex(1.0),
+            ),
+        )
         .direction(Axis::Horizontal)
         .cross_axis_alignment(CrossAxisAlignment::Center)
-        .gap(8.0),
+        .gap((8.0_f64).px()),
     )
     .expand_width()
     .padding(Padding::from_vh(4.0, 6.0));
@@ -232,8 +247,8 @@ fn commit_row(
     selected_oid: Option<&str>,
     wrap: bool,
 ) -> impl xilem::WidgetView<AppState> {
+    use xilem::masonry::properties::LineBreaking;
     use xilem::view::{flex, label, Axis, CrossAxisAlignment, FlexExt as _};
-    use xilem::LineBreaking;
 
     let oid_for_chip_select = c.oid.clone();
     let chip_views: Vec<_> = c
@@ -253,71 +268,74 @@ fn commit_row(
     // its lane lines extend cleanly across whatever the row ends up being
     // tall (driven by the wrapping subject).
     let row_inner = sized_box(
-        flex((
-            graph_gutter(row, lane_count, theme),
-            // Fixed-width chips column so subjects/oid/author align
-            // across rows. Inside, chips use a flow/wrap layout so a
-            // long branch name pushes subsequent chips onto a new line
-            // (growing the row taller) instead of overflowing the
-            // column and shoving other columns sideways.
-            sized_box(flow(chip_views, 4.0, 2.0)).width(180.0),
-            // Same flow trick as the author column: enforce a 74px
-            // column even if the short oid renders narrower naturally,
-            // so subject's flex(1.0) gets a stable allocation.
-            sized_box(flow(
-                vec![label(c.short.clone())
-                    .brush(theme.text_dim)
-                    .text_size(12.0)
-                    .boxed()],
-                0.0,
-                0.0,
-            ))
-            .width(74.0)
-            .padding(Padding::from_vh(0.0, 6.0)),
-            // Subject takes the remaining horizontal space via flex(1.0).
-            // Wrapped in flow because flex hands us a loose bc (max =
-            // allocated slot) — and label, like sized_box, returns its
-            // natural width, which would let the next column (author)
-            // slide leftward as the window widens. flow expands to bc
-            // max when finite, pinning the author column to the right.
-            flow(
-                vec![label(c.subject.clone())
-                    .brush(subject_color)
-                    .text_size(13.0)
-                    .line_break_mode(if wrap {
-                        LineBreaking::WordWrap
+        flex(
+            Axis::Vertical,
+            (
+                graph_gutter(row, lane_count, theme),
+                // Fixed-width chips column so subjects/oid/author align
+                // across rows. Inside, chips use a flow/wrap layout so a
+                // long branch name pushes subsequent chips onto a new line
+                // (growing the row taller) instead of overflowing the
+                // column and shoving other columns sideways.
+                sized_box(flow(chip_views, 4.0, 2.0)).width((180.0_f64).px()),
+                // Same flow trick as the author column: enforce a 74px
+                // column even if the short oid renders narrower naturally,
+                // so subject's flex(1.0) gets a stable allocation.
+                sized_box(flow(
+                    vec![label(c.short.clone())
+                        .text_size(12.0)
+                        .color(theme.text_dim)
+                        .boxed()],
+                    0.0,
+                    0.0,
+                ))
+                .width((74.0_f64).px())
+                .padding(Padding::from_vh(0.0, 6.0)),
+                // Subject takes the remaining horizontal space via flex(1.0).
+                // Wrapped in flow because flex hands us a loose bc (max =
+                // allocated slot) — and label, like sized_box, returns its
+                // natural width, which would let the next column (author)
+                // slide leftward as the window widens. flow expands to bc
+                // max when finite, pinning the author column to the right.
+                flow(
+                    vec![label(c.subject.clone())
+                        .text_size(13.0)
+                        .color(subject_color)
+                        .line_break_mode(if wrap {
+                            LineBreaking::WordWrap
+                        } else {
+                            LineBreaking::Clip
+                        })
+                        .boxed()],
+                    0.0,
+                    0.0,
+                )
+                .flex(1.0),
+                // Author column at the right end. Wrap the label in `flow`
+                // which (unlike sized_box) respects the bc.min width — so
+                // a short author name still leaves the column at its full
+                // 200px rather than collapsing to the natural text width
+                // and letting the subject's flex steal that space, which
+                // would shift the author's left edge across rows.
+                sized_box(flow(
+                    vec![label(if c.author.email.is_empty() {
+                        c.author.name.clone()
                     } else {
-                        LineBreaking::Clip
+                        format!("{}  <{}>", c.author.name, c.author.email)
                     })
+                    .text_size(12.0)
+                    .color(theme.text_muted)
+                    .line_break_mode(LineBreaking::Clip)
                     .boxed()],
-                0.0,
-                0.0,
-            )
-            .flex(1.0),
-            // Author column at the right end. Wrap the label in `flow`
-            // which (unlike sized_box) respects the bc.min width — so
-            // a short author name still leaves the column at its full
-            // 200px rather than collapsing to the natural text width
-            // and letting the subject's flex steal that space, which
-            // would shift the author's left edge across rows.
-            sized_box(flow(
-                vec![label(if c.author.email.is_empty() {
-                    c.author.name.clone()
-                } else {
-                    format!("{}  <{}>", c.author.name, c.author.email)
-                })
-                .brush(theme.text_muted)
-                .text_size(12.0)
-                .line_break_mode(LineBreaking::Clip)
-                .boxed()],
-                0.0,
-                0.0,
-            ))
-            .width(200.0),
-        ))
+                    0.0,
+                    0.0,
+                ))
+                .width((200.0_f64).px()),
+            ),
+        )
         .direction(Axis::Horizontal)
         .cross_axis_alignment(CrossAxisAlignment::Fill)
-        .gap(8.0),
+        .gap((8.0_f64).px()),
     )
     .expand_width()
     .padding(Padding::from_vh(2.0, 6.0));
@@ -402,13 +420,13 @@ fn ref_chip(
     // chips/columns off-screen.
     let pill = sized_box(
         label(text)
-            .brush(fg)
             .text_size(11.0)
-            .line_break_mode(xilem::LineBreaking::Clip),
+            .color(fg)
+            .line_break_mode(xilem::masonry::properties::LineBreaking::Clip),
     )
-    .background(bg_tint)
+    .corner_radius(4.0)
+    .background_color(bg_tint)
     .border(border, 1.0)
-    .rounded(4.0)
     .padding(Padding::from_vh(1.0, 6.0));
 
     // Branches and tags each get their own click target so right-click
@@ -501,7 +519,7 @@ fn graph_gutter(
 fn reflog_table(state: &AppState) -> impl xilem::WidgetView<AppState> {
     let theme = state.theme.clone();
     let rows: Vec<_> = state.reflog.iter().map(|e| reflog_row(e, &theme)).collect();
-    sized_box(flex(rows).direction(Axis::Vertical).gap(0.0))
+    sized_box(flex(Axis::Vertical, rows).gap((0.0_f64).px()))
         .expand_width()
         .padding(Padding::from_vh(0.0, 8.0))
 }
@@ -522,14 +540,19 @@ fn reflog_row(e: &ReflogEntry, theme: &Theme) -> impl xilem::WidgetView<AppState
         ReflogAction::Other => "other",
     };
     sized_box(
-        flex((
-            sized_box(label(e.short.clone()).brush(theme.text_dim).text_size(12.0)).width(80.0),
-            sized_box(label(action.to_string()).brush(theme.info).text_size(12.0)).width(100.0),
-            label(e.subject.clone()).brush(theme.text).text_size(13.0),
-            FlexSpacer::Flex(1.0),
-        ))
+        flex(
+            Axis::Vertical,
+            (
+                sized_box(label(e.short.clone()).text_size(12.0).color(theme.text_dim))
+                    .width((80.0_f64).px()),
+                sized_box(label(action.to_string()).text_size(12.0).color(theme.info))
+                    .width((100.0_f64).px()),
+                label(e.subject.clone()).text_size(13.0).color(theme.text),
+                FlexSpacer::Flex(1.0),
+            ),
+        )
         .direction(Axis::Horizontal)
-        .gap(8.0),
+        .gap((8.0_f64).px()),
     )
     .expand_width()
     .padding(Padding::from_vh(4.0, 6.0))

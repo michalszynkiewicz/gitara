@@ -4,6 +4,8 @@ use crate::app::{AppState, FetchModalState, Modal};
 use crate::git;
 use crate::theme::Theme;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::Style as _;
 use xilem::view::{flex, label, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
@@ -24,14 +26,14 @@ fn body_view(
     theme: &Theme,
 ) -> impl xilem::WidgetView<AppState> {
     let header = label("remote")
-        .brush(theme.text_dim)
         .text_size(10.0)
-        .weight(xilem::FontWeight::MEDIUM);
+        .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim);
 
     let chips: Vec<_> = if remotes.is_empty() {
         vec![label("(no remotes configured)")
-            .brush(theme.text_muted)
             .text_size(12.0)
+            .color(theme.text_muted)
             .boxed()]
     } else {
         remotes
@@ -47,12 +49,12 @@ fn body_view(
     };
     let prune_btn = flat_button(
         xilem::view::label(prune_label)
-            .brush(if s.prune {
+            .text_size(11.0)
+            .color(if s.prune {
                 theme.accent
             } else {
                 theme.text_muted
-            })
-            .text_size(11.0),
+            }),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -71,43 +73,46 @@ fn body_view(
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match (&s.error, s.running) {
         (Some(err), _) => label(err.clone())
-            .brush(theme.removed)
             .text_size(11.0)
+            .color(theme.removed)
             .boxed(),
         (_, true) => label("fetching…")
-            .brush(theme.text_muted)
             .text_size(11.0)
+            .color(theme.text_muted)
             .boxed(),
         _ => label("").boxed(),
     };
 
-    flex((
-        header,
-        flex(chips).direction(Axis::Horizontal).gap(6.0),
-        FlexSpacer::Fixed(12.0),
-        prune_btn,
-        FlexSpacer::Fixed(8.0),
-        error_view,
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            header,
+            flex(Axis::Horizontal, chips).gap((6.0_f64).px()),
+            FlexSpacer::Fixed((12.0_f64).px()),
+            prune_btn,
+            FlexSpacer::Fixed((8.0_f64).px()),
+            error_view,
+        ),
+    )
     .direction(Axis::Vertical)
     .cross_axis_alignment(CrossAxisAlignment::Start)
-    .gap(4.0)
+    .gap((4.0_f64).px())
 }
 
 fn remote_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let owned = name.to_string();
     flat_button(
         xilem::view::label(name.to_string())
-            .brush(if selected {
-                theme.accent_fg
-            } else {
-                theme.text
-            })
             .text_size(11.0)
             .weight(if selected {
                 xilem::FontWeight::MEDIUM
             } else {
                 xilem::FontWeight::NORMAL
+            })
+            .color(if selected {
+                theme.accent_fg
+            } else {
+                theme.text
             }),
         FlatStyle {
             idle_bg: if selected { Some(theme.accent) } else { None },

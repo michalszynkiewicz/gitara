@@ -5,7 +5,9 @@ use crate::app::{AppState, Modal, PushModalState};
 use crate::git;
 use crate::theme::Theme;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
-use xilem::view::{flex, label, sized_box, textbox, Axis, CrossAxisAlignment, FlexSpacer, Padding};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::{Padding, Style as _};
+use xilem::view::{flex, label, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -46,27 +48,27 @@ fn body_view(
 ) -> impl xilem::WidgetView<AppState> {
     // ── source line: read-only "this is the local branch we're pushing"
     let source_label = label("source")
-        .brush(theme.text_dim)
         .text_size(10.0)
-        .weight(xilem::FontWeight::MEDIUM);
+        .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim);
     let source_view = label(if s.branch.is_empty() {
         "(no current branch)".to_string()
     } else {
         s.branch.clone()
     })
-    .brush(theme.text)
     .text_size(13.0)
-    .weight(xilem::FontWeight::MEDIUM);
+    .weight(xilem::FontWeight::MEDIUM)
+    .color(theme.text);
 
     // ── remote chip picker
     let remote_label = label("remote")
-        .brush(theme.text_dim)
         .text_size(10.0)
-        .weight(xilem::FontWeight::MEDIUM);
+        .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim);
     let remote_chips: Vec<Box<xilem::AnyWidgetView<AppState>>> = if remotes.is_empty() {
         vec![label("(no remotes configured)")
-            .brush(theme.text_muted)
             .text_size(12.0)
+            .color(theme.text_muted)
             .boxed()]
     } else {
         remotes
@@ -77,39 +79,39 @@ fn body_view(
 
     // ── target branch input + suggestion chips for existing remote branches
     let target_label = label("target branch (on the remote)")
-        .brush(theme.text_dim)
         .text_size(10.0)
-        .weight(xilem::FontWeight::MEDIUM);
+        .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim);
     let target_input = sized_box(
-        textbox(s.target_branch.clone(), |st: &mut AppState, new| {
+        text_input(s.target_branch.clone(), |st: &mut AppState, new| {
             if let Some(ps) = push_state_mut(st) {
                 ps.target_branch = new;
                 ps.error = None;
             }
         })
         .on_enter(|st: &mut AppState, _| run_push(st))
-        .brush(super::input_text()),
+        .text_color(super::input_text()),
     )
     .expand_width()
-    .height(32.0)
-    .background(super::input_bg())
+    .height((32.0_f64).px())
+    .corner_radius(4.0)
+    .background_color(super::input_bg())
     .border(theme.border, 1.0)
-    .rounded(4.0)
     .padding(Padding::from_vh(4.0, 8.0));
 
     let suggestions_view: Box<xilem::AnyWidgetView<AppState>> = if existing_targets.is_empty() {
         label("(no existing branches on this remote)")
-            .brush(theme.text_dim)
             .text_size(10.0)
+            .color(theme.text_dim)
             .boxed()
     } else {
         let suggestion_chips: Vec<Box<xilem::AnyWidgetView<AppState>>> = existing_targets
             .iter()
             .map(|name| target_chip(name, s.target_branch == *name, theme).boxed())
             .collect();
-        flex(suggestion_chips)
+        flex(Axis::Vertical, suggestion_chips)
             .direction(Axis::Horizontal)
-            .gap(4.0)
+            .gap((4.0_f64).px())
             .boxed()
     };
 
@@ -121,12 +123,12 @@ fn body_view(
     };
     let force_btn = flat_button(
         xilem::view::label(force_label)
-            .brush(if s.force_with_lease {
+            .text_size(11.0)
+            .color(if s.force_with_lease {
                 theme.warn
             } else {
                 theme.text_muted
-            })
-            .text_size(11.0),
+            }),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -146,58 +148,61 @@ fn body_view(
         "rejects the push if the remote has commits we haven't seen — \
          safer than --force, still a rewrite",
     )
-    .brush(theme.text_dim)
-    .text_size(10.0);
+    .text_size(10.0)
+    .color(theme.text_dim);
 
     // ── error / running banner
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match (&s.error, s.running) {
         (Some(err), _) => label(err.clone())
-            .brush(theme.removed)
             .text_size(11.0)
+            .color(theme.removed)
             .boxed(),
         (_, true) => label("pushing…")
-            .brush(theme.text_muted)
             .text_size(11.0)
+            .color(theme.text_muted)
             .boxed(),
         _ => label("").boxed(),
     };
 
-    flex((
-        source_label,
-        source_view,
-        FlexSpacer::Fixed(12.0),
-        remote_label,
-        flex(remote_chips).direction(Axis::Horizontal).gap(6.0),
-        FlexSpacer::Fixed(12.0),
-        target_label,
-        target_input,
-        FlexSpacer::Fixed(4.0),
-        suggestions_view,
-        FlexSpacer::Fixed(14.0),
-        force_btn,
-        force_help,
-        FlexSpacer::Fixed(8.0),
-        error_view,
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            source_label,
+            source_view,
+            FlexSpacer::Fixed((12.0_f64).px()),
+            remote_label,
+            flex(Axis::Horizontal, remote_chips).gap((6.0_f64).px()),
+            FlexSpacer::Fixed((12.0_f64).px()),
+            target_label,
+            target_input,
+            FlexSpacer::Fixed((4.0_f64).px()),
+            suggestions_view,
+            FlexSpacer::Fixed((14.0_f64).px()),
+            force_btn,
+            force_help,
+            FlexSpacer::Fixed((8.0_f64).px()),
+            error_view,
+        ),
+    )
     .direction(Axis::Vertical)
     .cross_axis_alignment(CrossAxisAlignment::Start)
-    .gap(4.0)
+    .gap((4.0_f64).px())
 }
 
 fn remote_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let owned = name.to_string();
     flat_button(
         xilem::view::label(name.to_string())
-            .brush(if selected {
-                theme.accent_fg
-            } else {
-                theme.text
-            })
             .text_size(11.0)
             .weight(if selected {
                 xilem::FontWeight::MEDIUM
             } else {
                 xilem::FontWeight::NORMAL
+            })
+            .color(if selected {
+                theme.accent_fg
+            } else {
+                theme.text
             }),
         FlatStyle {
             idle_bg: if selected { Some(theme.accent) } else { None },
@@ -224,12 +229,12 @@ fn target_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetV
     let owned = name.to_string();
     flat_button(
         xilem::view::label(name.to_string())
-            .brush(if selected {
+            .text_size(11.0)
+            .color(if selected {
                 theme.accent_fg
             } else {
                 theme.text_muted
-            })
-            .text_size(11.0),
+            }),
         FlatStyle {
             idle_bg: if selected { Some(theme.accent) } else { None },
             hover_bg: theme.bg_hover,

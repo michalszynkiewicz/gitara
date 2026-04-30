@@ -5,6 +5,8 @@ use crate::app::{AppState, Modal, ResetModalState, ResetMode, Toast};
 use crate::git;
 use crate::theme::Theme;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::Style as _;
 use xilem::view::{flex, label, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
@@ -23,17 +25,20 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 
 fn body_view(s: &ResetModalState, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let mode_label = label("mode")
-        .brush(theme.text_dim)
         .text_size(10.0)
-        .weight(xilem::FontWeight::MEDIUM);
+        .weight(xilem::FontWeight::MEDIUM)
+        .color(theme.text_dim);
 
-    let chips = flex((
-        mode_chip("soft", ResetMode::Soft, s.mode, theme),
-        mode_chip("mixed", ResetMode::Mixed, s.mode, theme),
-        mode_chip("hard", ResetMode::Hard, s.mode, theme),
-    ))
+    let chips = flex(
+        Axis::Vertical,
+        (
+            mode_chip("soft", ResetMode::Soft, s.mode, theme),
+            mode_chip("mixed", ResetMode::Mixed, s.mode, theme),
+            mode_chip("hard", ResetMode::Hard, s.mode, theme),
+        ),
+    )
     .direction(Axis::Horizontal)
-    .gap(6.0);
+    .gap((6.0_f64).px());
 
     // Per-mode hint that explains what the user is about to do.
     let (hint_text, hint_color) = match s.mode {
@@ -51,28 +56,31 @@ fn body_view(s: &ResetModalState, theme: &Theme) -> impl xilem::WidgetView<AppSt
         ),
     };
     let hint = label(hint_text.to_string())
-        .brush(hint_color)
-        .text_size(11.0);
+        .text_size(11.0)
+        .color(hint_color);
 
     let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
         Some(err) => label(err.clone())
-            .brush(theme.removed)
             .text_size(11.0)
+            .color(theme.removed)
             .boxed(),
         None => label("").boxed(),
     };
 
-    flex((
-        mode_label,
-        chips,
-        FlexSpacer::Fixed(12.0),
-        hint,
-        FlexSpacer::Fixed(8.0),
-        error_view,
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            mode_label,
+            chips,
+            FlexSpacer::Fixed((12.0_f64).px()),
+            hint,
+            FlexSpacer::Fixed((8.0_f64).px()),
+            error_view,
+        ),
+    )
     .direction(Axis::Vertical)
     .cross_axis_alignment(CrossAxisAlignment::Start)
-    .gap(4.0)
+    .gap((4.0_f64).px())
 }
 
 fn mode_chip(
@@ -84,16 +92,16 @@ fn mode_chip(
     let selected = mode == current;
     flat_button(
         xilem::view::label(text)
-            .brush(if selected {
-                theme.accent_fg
-            } else {
-                theme.text
-            })
             .text_size(11.0)
             .weight(if selected {
                 xilem::FontWeight::MEDIUM
             } else {
                 xilem::FontWeight::NORMAL
+            })
+            .color(if selected {
+                theme.accent_fg
+            } else {
+                theme.text
             }),
         FlatStyle {
             idle_bg: if selected { Some(theme.accent) } else { None },

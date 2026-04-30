@@ -4,8 +4,10 @@ use crate::app::{AppState, InspectorTab};
 use crate::model::commit::Commit;
 use crate::theme::Theme;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
+use xilem::masonry::properties::types::AsUnit as _;
+use xilem::style::{Padding, Style as _};
 use xilem::view::{
-    flex, label, portal, sized_box, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer, Padding,
+    flex, label, portal, sized_box, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer,
 };
 use xilem::WidgetView as _;
 
@@ -20,48 +22,54 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     let theme = state.theme.clone();
     let current = state.inspector.tab;
 
-    flex((
-        // Tab strip
-        sized_box(
-            flex((
-                itab(
-                    &theme,
-                    "Changes",
-                    current == InspectorTab::Changes,
-                    |s: &mut AppState| s.inspector.tab = InspectorTab::Changes,
-                ),
-                itab(
-                    &theme,
-                    "Diff",
-                    current == InspectorTab::Diff,
-                    |s: &mut AppState| s.inspector.tab = InspectorTab::Diff,
-                ),
-                itab(
-                    &theme,
-                    "Files",
-                    current == InspectorTab::Files,
-                    |s: &mut AppState| s.inspector.tab = InspectorTab::Files,
-                ),
-                itab(
-                    &theme,
-                    "Details",
-                    current == InspectorTab::Details,
-                    |s: &mut AppState| s.inspector.tab = InspectorTab::Details,
-                ),
-                FlexSpacer::Flex(1.0),
-            ))
-            .direction(Axis::Horizontal)
-            .gap(2.0),
-        )
-        .expand_width()
-        .padding(Padding::from_vh(6.0, 10.0)),
-        // Wrap the body in a Portal so long diffs/file lists scroll within
-        // the inspector pane instead of overflowing it.
-        portal(body).flex(1.0),
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            // Tab strip
+            sized_box(
+                flex(
+                    Axis::Vertical,
+                    (
+                        itab(
+                            &theme,
+                            "Changes",
+                            current == InspectorTab::Changes,
+                            |s: &mut AppState| s.inspector.tab = InspectorTab::Changes,
+                        ),
+                        itab(
+                            &theme,
+                            "Diff",
+                            current == InspectorTab::Diff,
+                            |s: &mut AppState| s.inspector.tab = InspectorTab::Diff,
+                        ),
+                        itab(
+                            &theme,
+                            "Files",
+                            current == InspectorTab::Files,
+                            |s: &mut AppState| s.inspector.tab = InspectorTab::Files,
+                        ),
+                        itab(
+                            &theme,
+                            "Details",
+                            current == InspectorTab::Details,
+                            |s: &mut AppState| s.inspector.tab = InspectorTab::Details,
+                        ),
+                        FlexSpacer::Flex(1.0),
+                    ),
+                )
+                .direction(Axis::Horizontal)
+                .gap((2.0_f64).px()),
+            )
+            .expand_width()
+            .padding(Padding::from_vh(6.0, 10.0)),
+            // Wrap the body in a Portal so long diffs/file lists scroll within
+            // the inspector pane instead of overflowing it.
+            portal(body).flex(1.0),
+        ),
+    )
     .direction(Axis::Vertical)
     .cross_axis_alignment(CrossAxisAlignment::Start)
-    .gap(0.0)
+    .gap((0.0_f64).px())
 }
 
 fn itab<F>(
@@ -79,7 +87,7 @@ where
         theme.text_muted
     };
     flat_button(
-        xilem::view::label(text).brush(fg).text_size(12.0),
+        xilem::view::label(text).text_size(12.0).color(fg),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -147,37 +155,40 @@ fn details(state: &AppState) -> impl xilem::WidgetView<AppState> {
     };
 
     sized_box(
-        flex((
-            // Subject first — it's the headline.
-            label(c.subject.clone())
-                .brush(theme.text)
-                .text_size(14.0)
-                .weight(xilem::FontWeight::MEDIUM),
-            FlexSpacer::Fixed(6.0),
-            // Author byline — emails muted, name regular.
-            label(format!("{} · {}", c.author.name, c.author.email))
-                .brush(theme.text_muted)
-                .text_size(11.0),
-            FlexSpacer::Fixed(14.0),
-            divider(&theme),
-            FlexSpacer::Fixed(12.0),
-            kv("commit", c.oid.clone(), &theme),
-            kv("parents", parents, &theme),
-            tags_row,
-            kv_brushed("signed", sig_text.to_string(), sig_color, &theme),
-            FlexSpacer::Fixed(14.0),
-            // Body, if any. WordWrap so long lines wrap inside the
-            // inspector pane and \n in the message renders as a hard
-            // break (full multi-line commit message is visible, not
-            // just the first line).
-            label(c.body.clone().unwrap_or_default())
-                .brush(theme.text_muted)
-                .text_size(12.0)
-                .line_break_mode(xilem::LineBreaking::WordWrap),
-        ))
+        flex(
+            Axis::Vertical,
+            (
+                // Subject first — it's the headline.
+                label(c.subject.clone())
+                    .text_size(14.0)
+                    .weight(xilem::FontWeight::MEDIUM)
+                    .color(theme.text),
+                FlexSpacer::Fixed((6.0_f64).px()),
+                // Author byline — emails muted, name regular.
+                label(format!("{} · {}", c.author.name, c.author.email))
+                    .text_size(11.0)
+                    .color(theme.text_muted),
+                FlexSpacer::Fixed((14.0_f64).px()),
+                divider(&theme),
+                FlexSpacer::Fixed((12.0_f64).px()),
+                kv("commit", c.oid.clone(), &theme),
+                kv("parents", parents, &theme),
+                tags_row,
+                kv_brushed("signed", sig_text.to_string(), sig_color, &theme),
+                FlexSpacer::Fixed((14.0_f64).px()),
+                // Body, if any. WordWrap so long lines wrap inside the
+                // inspector pane and \n in the message renders as a hard
+                // break (full multi-line commit message is visible, not
+                // just the first line).
+                label(c.body.clone().unwrap_or_default())
+                    .text_size(12.0)
+                    .color(theme.text_muted)
+                    .line_break_mode(xilem::masonry::properties::LineBreaking::WordWrap),
+            ),
+        )
         .direction(Axis::Vertical)
         .cross_axis_alignment(CrossAxisAlignment::Start)
-        .gap(0.0),
+        .gap((0.0_f64).px()),
     )
     .expand_width()
     .padding(Padding::from_vh(14.0, 16.0))
@@ -190,46 +201,52 @@ fn kv_brushed(
     value_brush: vello::peniko::Color,
     theme: &Theme,
 ) -> impl xilem::WidgetView<AppState> {
-    flex((
-        sized_box(
-            label(key)
-                .brush(theme.text_dim)
-                .text_size(10.0)
-                .weight(xilem::FontWeight::MEDIUM),
-        )
-        .width(60.0),
-        label(value).brush(value_brush).text_size(12.0),
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            sized_box(
+                label(key)
+                    .text_size(10.0)
+                    .weight(xilem::FontWeight::MEDIUM)
+                    .color(theme.text_dim),
+            )
+            .width((60.0_f64).px()),
+            label(value).text_size(12.0).color(value_brush),
+        ),
+    )
     .direction(Axis::Horizontal)
     .cross_axis_alignment(CrossAxisAlignment::Center)
-    .gap(8.0)
+    .gap((8.0_f64).px())
 }
 
 fn kv(key: &'static str, value: String, theme: &Theme) -> impl xilem::WidgetView<AppState> {
-    flex((
-        sized_box(
-            label(key)
-                .brush(theme.text_dim)
-                .text_size(10.0)
-                .weight(xilem::FontWeight::MEDIUM),
-        )
-        .width(60.0),
-        label(value).brush(theme.text).text_size(12.0),
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            sized_box(
+                label(key)
+                    .text_size(10.0)
+                    .weight(xilem::FontWeight::MEDIUM)
+                    .color(theme.text_dim),
+            )
+            .width((60.0_f64).px()),
+            label(value).text_size(12.0).color(theme.text),
+        ),
+    )
     .direction(Axis::Horizontal)
     .cross_axis_alignment(CrossAxisAlignment::Center)
-    .gap(8.0)
+    .gap((8.0_f64).px())
 }
 
 fn divider(theme: &Theme) -> impl xilem::WidgetView<AppState> {
-    sized_box(flex(()))
+    sized_box(flex(Axis::Vertical, ()))
         .expand_width()
-        .height(1.0)
-        .background(theme.border_faint)
+        .height((1.0_f64).px())
+        .background_color(theme.border_faint)
 }
 
 fn placeholder(text: &'static str, theme: &Theme) -> impl xilem::WidgetView<AppState> {
-    sized_box(label(text).brush(theme.text_dim).text_size(12.0))
+    sized_box(label(text).text_size(12.0).color(theme.text_dim))
         .expand()
         .padding(Padding::from_vh(14.0, 16.0))
 }
@@ -288,10 +305,10 @@ fn files_list(
 ) -> impl xilem::WidgetView<AppState> {
     let rows: Vec<_> = files.iter().map(|f| file_row(f, theme).boxed()).collect();
     sized_box(
-        flex(rows)
+        flex(Axis::Vertical, rows)
             .direction(Axis::Vertical)
             .cross_axis_alignment(CrossAxisAlignment::Start)
-            .gap(2.0),
+            .gap((2.0_f64).px()),
     )
     .expand_width()
     .padding(Padding::from_vh(10.0, 14.0))
@@ -317,21 +334,24 @@ fn file_row(f: &crate::model::diff::FileChange, theme: &Theme) -> impl xilem::Wi
         String::new()
     };
 
-    flex((
-        sized_box(
-            label(letter.to_string())
-                .brush(color)
-                .text_size(11.0)
-                .weight(xilem::FontWeight::MEDIUM),
-        )
-        .width(16.0),
-        label(path_str).brush(theme.text).text_size(12.0),
-        FlexSpacer::Flex(1.0),
-        label(counts).brush(theme.text_muted).text_size(11.0),
-    ))
+    flex(
+        Axis::Vertical,
+        (
+            sized_box(
+                label(letter.to_string())
+                    .text_size(11.0)
+                    .weight(xilem::FontWeight::MEDIUM)
+                    .color(color),
+            )
+            .width((16.0_f64).px()),
+            label(path_str).text_size(12.0).color(theme.text),
+            FlexSpacer::Flex(1.0),
+            label(counts).text_size(11.0).color(theme.text_muted),
+        ),
+    )
     .direction(Axis::Horizontal)
     .cross_axis_alignment(CrossAxisAlignment::Center)
-    .gap(8.0)
+    .gap((8.0_f64).px())
 }
 
 // ── Diff tab: hunks for the selected commit ────────────────────────────
@@ -361,8 +381,8 @@ fn diff(state: &AppState) -> impl xilem::WidgetView<AppState> {
 fn placeholder_text(text: &str, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     sized_box(
         label(text.to_string())
-            .brush(theme.text_dim)
-            .text_size(12.0),
+            .text_size(12.0)
+            .color(theme.text_dim),
     )
     .expand()
     .padding(Padding::from_vh(14.0, 16.0))
