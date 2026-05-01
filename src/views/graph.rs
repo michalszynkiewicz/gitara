@@ -5,6 +5,7 @@ use crate::graph_layout::{self, RowLayout};
 use crate::model::commit::Commit;
 use crate::model::reflog::{ReflogAction, ReflogEntry};
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::clickable_box::{clickable_box, ClickInfo, ClickStyle};
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use crate::widgets::flow::flow;
@@ -12,7 +13,7 @@ use crate::widgets::graph_gutter::{graph_gutter as graph_gutter_view, GutterStyl
 use masonry::core::PointerButton;
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::{Padding, Style as _};
-use xilem::view::{flex, label, portal, sized_box, Axis, FlexExt as _, FlexSpacer};
+use xilem::view::{flex, portal, sized_box, Axis, FlexExt as _, FlexSpacer};
 use xilem::WidgetView as _;
 
 // Graph geometry. Pitch + row height stay here because the row's
@@ -72,7 +73,7 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 fn wrap_toggle(theme: &Theme, on: bool) -> impl xilem::WidgetView<AppState> {
     let label_text = if on { "✓ wrap" } else { "wrap" };
     flat_button(
-        xilem::view::label(label_text).text_size(11.0).color(if on {
+        crate::ui::label(label_text).text_size(11.0).color(if on {
             theme.accent
         } else {
             theme.text_muted
@@ -100,7 +101,7 @@ fn all_refs_toggle(theme: &Theme, on: bool) -> impl xilem::WidgetView<AppState> 
         "all branches"
     };
     flat_button(
-        xilem::view::label(label_text).text_size(11.0).color(if on {
+        crate::ui::label(label_text).text_size(11.0).color(if on {
             theme.accent
         } else {
             theme.text_muted
@@ -136,7 +137,7 @@ where
         theme.text_muted
     };
     flat_button(
-        xilem::view::label(text).text_size(12.0).color(fg),
+        crate::ui::label(text).text_size(12.0).color(fg),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -184,7 +185,7 @@ fn working_tree_row(
     theme: &Theme,
     is_selected: bool,
 ) -> impl xilem::WidgetView<AppState> {
-    use xilem::view::{flex, label, Axis, CrossAxisAlignment};
+    use xilem::view::{flex, Axis, CrossAxisAlignment};
 
     let gutter = sized_box(flex(Axis::Vertical, ()))
         .width((lane_count as f64 * LANE_PITCH).px())
@@ -248,7 +249,7 @@ fn commit_row(
     wrap: bool,
 ) -> impl xilem::WidgetView<AppState> {
     use xilem::masonry::properties::LineBreaking;
-    use xilem::view::{flex, label, Axis, CrossAxisAlignment, FlexExt as _};
+    use xilem::view::{flex, Axis, CrossAxisAlignment, FlexExt as _};
 
     let oid_for_chip_select = c.oid.clone();
     let chip_views: Vec<_> = c
@@ -525,7 +526,7 @@ fn reflog_table(state: &AppState) -> impl xilem::WidgetView<AppState> {
 }
 
 fn reflog_row(e: &ReflogEntry, theme: &Theme) -> impl xilem::WidgetView<AppState> {
-    use xilem::view::{flex, label, Axis};
+    use xilem::view::{flex, Axis};
     let action = match &e.action {
         ReflogAction::Commit => "commit",
         ReflogAction::Merge => "merge",

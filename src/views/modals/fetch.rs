@@ -3,10 +3,11 @@
 use crate::app::{AppState, FetchModalState, Modal};
 use crate::git;
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::Style as _;
-use xilem::view::{flex, label, Axis, CrossAxisAlignment, FlexSpacer};
+use xilem::view::{flex, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -48,7 +49,7 @@ fn body_view(
         "prune deleted remote refs"
     };
     let prune_btn = flat_button(
-        xilem::view::label(prune_label)
+        crate::ui::label(prune_label)
             .text_size(11.0)
             .color(if s.prune {
                 theme.accent
@@ -102,7 +103,7 @@ fn body_view(
 fn remote_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let owned = name.to_string();
     flat_button(
-        xilem::view::label(name.to_string())
+        crate::ui::label(name.to_string())
             .text_size(11.0)
             .weight(if selected {
                 xilem::FontWeight::MEDIUM

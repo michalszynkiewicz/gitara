@@ -4,10 +4,11 @@
 use crate::app::{AppState, Modal, ResetModalState, ResetMode, Toast};
 use crate::git;
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::Style as _;
-use xilem::view::{flex, label, Axis, CrossAxisAlignment, FlexSpacer};
+use xilem::view::{flex, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -91,7 +92,7 @@ fn mode_chip(
 ) -> impl xilem::WidgetView<AppState> {
     let selected = mode == current;
     flat_button(
-        xilem::view::label(text)
+        crate::ui::label(text)
             .text_size(11.0)
             .weight(if selected {
                 xilem::FontWeight::MEDIUM

@@ -3,10 +3,11 @@
 
 use crate::app::AppState;
 use crate::model::repo::HeadState;
+use crate::ui::label;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     use xilem::style::Style as _;
-    use xilem::view::{flex, label, Axis};
+    use xilem::view::{flex, Axis};
 
     let branch = match &state.repo.head {
         HeadState::Branch { name } => name.clone(),

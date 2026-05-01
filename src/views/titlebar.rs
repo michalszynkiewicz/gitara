@@ -3,10 +3,11 @@
 
 use crate::app::AppState;
 use crate::theme::ThemeMode;
+use crate::ui::label;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::Style as _;
-use xilem::view::{flex, label, Axis, CrossAxisAlignment, FlexSpacer};
+use xilem::view::{flex, Axis, CrossAxisAlignment, FlexSpacer};
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
     let theme = state.theme.clone();
@@ -33,7 +34,7 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
                 .color(theme.text_muted),
             FlexSpacer::Flex(1.0),
             flat_button(
-                xilem::view::label(label_text)
+                crate::ui::label(label_text)
                     .text_size(11.0)
                     .color(theme.text_muted),
                 FlatStyle {

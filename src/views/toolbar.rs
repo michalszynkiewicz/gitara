@@ -98,7 +98,7 @@ where
     F: Fn(&mut AppState) + Send + Sync + 'static,
 {
     let fg = if primary { theme.accent_fg } else { theme.text };
-    let lbl = xilem::view::label(text).text_size(12.0).color(fg);
+    let lbl = crate::ui::label(text).text_size(12.0).color(fg);
     flat_button(
         lbl,
         FlatStyle {

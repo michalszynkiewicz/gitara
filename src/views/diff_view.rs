@@ -8,9 +8,10 @@
 
 use std::path::PathBuf;
 
+use crate::ui::label;
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::{Padding, Style as _};
-use xilem::view::{flex, label, sized_box, Axis, CrossAxisAlignment};
+use xilem::view::{flex, sized_box, Axis, CrossAxisAlignment};
 use xilem::WidgetView as _;
 
 use crate::app::AppState;
@@ -26,9 +27,12 @@ pub fn render_hunks(
     hunks: Vec<(PathBuf, Hunk)>,
     theme: &Theme,
 ) -> impl xilem::WidgetView<AppState> {
-    let mono: masonry::parley::FontStack<'static> = masonry::parley::FontStack::Source(
-        std::borrow::Cow::Borrowed("ui-monospace, SFMono-Regular, Menlo, monospace"),
-    );
+    // Embedded JetBrains Mono — registered at startup in main.rs and named
+    // explicitly here so we don't fall back to the host's monospace.
+    let mono: masonry::parley::FontStack<'static> =
+        masonry::parley::FontStack::Source(std::borrow::Cow::Borrowed(
+            "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace",
+        ));
 
     let mut rows: Vec<Box<xilem::AnyWidgetView<AppState>>> = Vec::new();
     let mut current_path: Option<PathBuf> = None;
