@@ -131,7 +131,11 @@ jobs:
         run: cargo build --release
 
       - name: Package
-        run: tar -czf gitara-linux-amd64.tar.gz -C target/release gitara
+        run: |
+          mkdir -p dist/gitara-linux-amd64
+          cp target/release/gitara dist/gitara-linux-amd64/
+          cp -r assets/fonts/licenses dist/gitara-linux-amd64/THIRD-PARTY-LICENSES
+          tar -czf gitara-linux-amd64.tar.gz -C dist gitara-linux-amd64
 
       - name: Upload to release
         env:
@@ -159,7 +163,11 @@ jobs:
         run: cargo build --release
 
       - name: Package
-        run: tar -czf gitara-macos-arm64.tar.gz -C target/release gitara
+        run: |
+          mkdir -p dist/gitara-macos-arm64
+          cp target/release/gitara dist/gitara-macos-arm64/
+          cp -r assets/fonts/licenses dist/gitara-macos-arm64/THIRD-PARTY-LICENSES
+          tar -czf gitara-macos-arm64.tar.gz -C dist gitara-macos-arm64
 
       - name: Upload to release
         env:
