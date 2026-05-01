@@ -63,19 +63,18 @@ fn body_view(
             .collect()
     };
 
-    let no_ff_label = if s.no_ff {
-        "✓ no fast-forward (always create merge commit)"
+    let no_ff_color = if s.no_ff {
+        theme.accent
     } else {
-        "no fast-forward (always create merge commit)"
+        theme.text_muted
     };
     let no_ff_btn = flat_button(
-        crate::ui::label(no_ff_label)
-            .text_size(11.0)
-            .color(if s.no_ff {
-                theme.accent
-            } else {
-                theme.text_muted
-            }),
+        crate::ui::toggle_row(
+            s.no_ff,
+            "no fast-forward (always create merge commit)",
+            no_ff_color,
+            11.0,
+        ),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,

@@ -57,20 +57,51 @@ fn branch_rows(state: &AppState, theme: &Theme) -> Vec<Box<xilem::AnyWidgetView<
         .map(|b| {
             let name = b.name.clone();
             let current = b.current;
-            let ahead_behind = if b.ahead > 0 || b.behind > 0 {
-                format!("  ↑{} ↓{}", b.ahead, b.behind)
-            } else {
-                String::new()
-            };
-            let prefix = if current { "●  " } else { "   " };
-            let text = format!("{prefix}{name}{ahead_behind}");
             let brush = if current { theme.accent } else { theme.text };
-            let mut lbl = label(text).text_size(12.0);
+
+            let dot: Box<xilem::AnyWidgetView<AppState>> = if current {
+                crate::ui::icon("dot").text_size(12.0).color(brush).boxed()
+            } else {
+                // Same-width invisible spacer so non-current branches indent
+                // to the same x as current ones.
+                sized_box(label("")).width((12.0_f64).px()).boxed()
+            };
+
+            let mut name_lbl = label(name.clone()).text_size(12.0);
             if current {
-                lbl = lbl.weight(xilem::FontWeight::MEDIUM);
+                name_lbl = name_lbl.weight(xilem::FontWeight::MEDIUM);
             }
-            let lbl = lbl.color(brush);
-            let row_inner = sized_box(lbl)
+            let name_lbl = name_lbl.color(brush);
+
+            let ahead_behind: Box<xilem::AnyWidgetView<AppState>> = if b.ahead > 0 || b.behind > 0 {
+                flex(
+                    Axis::Horizontal,
+                    (
+                        crate::ui::icon("arrow-up").text_size(11.0).color(brush),
+                        label(format!("{}", b.ahead)).text_size(12.0).color(brush),
+                        FlexSpacer::Fixed((4.0_f64).px()),
+                        crate::ui::icon("arrow-down").text_size(11.0).color(brush),
+                        label(format!("{}", b.behind)).text_size(12.0).color(brush),
+                    ),
+                )
+                .gap((2.0_f64).px())
+                .boxed()
+            } else {
+                label("").boxed()
+            };
+
+            let row_flex = flex(
+                Axis::Horizontal,
+                (
+                    dot,
+                    name_lbl,
+                    FlexSpacer::Fixed((6.0_f64).px()),
+                    ahead_behind,
+                ),
+            )
+            .gap((4.0_f64).px())
+            .cross_axis_alignment(CrossAxisAlignment::Center);
+            let row_inner = sized_box(row_flex)
                 .expand_width()
                 .padding(Padding::from_vh(3.0, 4.0));
 

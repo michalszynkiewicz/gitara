@@ -117,19 +117,13 @@ fn body_view(
     };
 
     // ── force-with-lease toggle (unchanged from before)
-    let force_label = if s.force_with_lease {
-        "✓ force with lease"
+    let force_color = if s.force_with_lease {
+        theme.warn
     } else {
-        "force with lease"
+        theme.text_muted
     };
     let force_btn = flat_button(
-        crate::ui::label(force_label)
-            .text_size(11.0)
-            .color(if s.force_with_lease {
-                theme.warn
-            } else {
-                theme.text_muted
-            }),
+        crate::ui::toggle_row(s.force_with_lease, "force with lease", force_color, 11.0),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
