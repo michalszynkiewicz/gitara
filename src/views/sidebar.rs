@@ -4,13 +4,12 @@
 
 use crate::app::{AppState, CtxMenu, CtxMenuKind};
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::clickable_box::{clickable_box, ClickInfo, ClickStyle};
 use masonry::core::PointerButton;
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::{Padding, Style as _};
-use xilem::view::{
-    flex, label, sized_box, Axis, CrossAxisAlignment, FlexSpacer, MainAxisAlignment,
-};
+use xilem::view::{flex, sized_box, Axis, CrossAxisAlignment, FlexSpacer, MainAxisAlignment};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {

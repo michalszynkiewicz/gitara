@@ -4,10 +4,11 @@
 use crate::app::{AppState, Modal, PushModalState};
 use crate::git;
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::{Padding, Style as _};
-use xilem::view::{flex, label, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
+use xilem::view::{flex, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -122,7 +123,7 @@ fn body_view(
         "force with lease"
     };
     let force_btn = flat_button(
-        xilem::view::label(force_label)
+        crate::ui::label(force_label)
             .text_size(11.0)
             .color(if s.force_with_lease {
                 theme.warn
@@ -192,7 +193,7 @@ fn body_view(
 fn remote_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let owned = name.to_string();
     flat_button(
-        xilem::view::label(name.to_string())
+        crate::ui::label(name.to_string())
             .text_size(11.0)
             .weight(if selected {
                 xilem::FontWeight::MEDIUM
@@ -228,7 +229,7 @@ fn remote_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetV
 fn target_chip(name: &str, selected: bool, theme: &Theme) -> impl xilem::WidgetView<AppState> {
     let owned = name.to_string();
     flat_button(
-        xilem::view::label(name.to_string())
+        crate::ui::label(name.to_string())
             .text_size(11.0)
             .color(if selected {
                 theme.accent_fg

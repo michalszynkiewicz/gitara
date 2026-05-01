@@ -640,13 +640,13 @@ pub fn root_view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
             flex(
                 Axis::Vertical,
                 (
-                    xilem::view::label(t.message.clone())
+                    crate::ui::label(t.message.clone())
                         .text_size(12.0)
                         .weight(xilem::FontWeight::MEDIUM)
                         .color(fg),
                     xilem::view::FlexSpacer::Flex(1.0),
                     crate::widgets::flat_button::flat_button(
-                        xilem::view::label("dismiss").text_size(11.0).color(fg),
+                        crate::ui::label("dismiss").text_size(11.0).color(fg),
                         crate::widgets::flat_button::FlatStyle {
                             idle_bg: None,
                             hover_bg: vello::peniko::Color::from_rgba8(255, 255, 255, 40),

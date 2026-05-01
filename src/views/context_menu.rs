@@ -7,13 +7,14 @@ use crate::app::{
     RenameBranchModalState, ResetModalState, Toast,
 };
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::clickable_box::{clickable_box, ClickInfo, ClickStyle};
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use vello::peniko::Color;
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::masonry::properties::types::UnitPoint;
 use xilem::style::{Padding, Style as _};
-use xilem::view::{flex, label, sized_box, zstack, Axis, CrossAxisAlignment, FlexSpacer};
+use xilem::view::{flex, sized_box, zstack, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 const MENU_WIDTH: f64 = 200.0;
@@ -383,7 +384,7 @@ where
     F: Fn(&mut AppState) + Send + Sync + 'static,
 {
     sized_box(flat_button(
-        xilem::view::label(text).text_size(12.0).color(theme.text),
+        crate::ui::label(text).text_size(12.0).color(theme.text),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,

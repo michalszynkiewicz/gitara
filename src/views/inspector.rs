@@ -3,12 +3,11 @@
 use crate::app::{AppState, InspectorTab};
 use crate::model::commit::Commit;
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::{Padding, Style as _};
-use xilem::view::{
-    flex, label, portal, sized_box, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer,
-};
+use xilem::view::{flex, portal, sized_box, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -87,7 +86,7 @@ where
         theme.text_muted
     };
     flat_button(
-        xilem::view::label(text).text_size(12.0).color(fg),
+        crate::ui::label(text).text_size(12.0).color(fg),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,

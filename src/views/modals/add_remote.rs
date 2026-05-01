@@ -3,9 +3,10 @@
 use crate::app::{AddRemoteModalState, AppState, Modal, Toast};
 use crate::git;
 use crate::theme::Theme;
+use crate::ui::label;
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::{Padding, Style as _};
-use xilem::view::{flex, label, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
+use xilem::view::{flex, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {

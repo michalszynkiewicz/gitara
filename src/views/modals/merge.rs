@@ -3,10 +3,11 @@
 use crate::app::{AppState, MergeModalState, Modal, Toast};
 use crate::git;
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::Style as _;
-use xilem::view::{flex, label, Axis, CrossAxisAlignment, FlexSpacer};
+use xilem::view::{flex, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -68,7 +69,7 @@ fn body_view(
         "no fast-forward (always create merge commit)"
     };
     let no_ff_btn = flat_button(
-        xilem::view::label(no_ff_label)
+        crate::ui::label(no_ff_label)
             .text_size(11.0)
             .color(if s.no_ff {
                 theme.accent

@@ -6,12 +6,13 @@ use std::path::PathBuf;
 
 use crate::app::{AppState, CommitModalState, Modal};
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::clickable_box::{clickable_box, ClickStyle};
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::{Padding, Style as _};
 use xilem::view::{
-    flex, label, portal, sized_box, text_input, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer,
+    flex, portal, sized_box, text_input, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer,
 };
 use xilem::WidgetView as _;
 
@@ -74,7 +75,7 @@ fn body_view(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
         "amend last commit"
     };
     let amend_btn = flat_button(
-        xilem::view::label(amend_label)
+        crate::ui::label(amend_label)
             .text_size(11.0)
             .color(if s.amend {
                 theme.warn
@@ -295,7 +296,7 @@ fn file_row(
 
     let action_label = if staged { "−" } else { "+" };
     let action_btn = flat_button(
-        xilem::view::label(action_label.to_string())
+        crate::ui::label(action_label.to_string())
             .text_size(13.0)
             .weight(xilem::FontWeight::MEDIUM)
             .color(if staged { theme.removed } else { theme.added }),
@@ -369,9 +370,7 @@ fn footer_view(s: &CommitModalState, theme: &Theme) -> Box<xilem::AnyWidgetView<
         (
             FlexSpacer::Flex(1.0),
             flat_button(
-                xilem::view::label("Cancel")
-                    .text_size(12.0)
-                    .color(theme.text),
+                crate::ui::label("Cancel").text_size(12.0).color(theme.text),
                 FlatStyle {
                     idle_bg: None,
                     hover_bg: theme.bg_hover,
@@ -384,7 +383,7 @@ fn footer_view(s: &CommitModalState, theme: &Theme) -> Box<xilem::AnyWidgetView<
                 |s: &mut AppState| s.modal = None,
             ),
             flat_button(
-                xilem::view::label(if s.amend { "Amend" } else { "Commit" })
+                crate::ui::label(if s.amend { "Amend" } else { "Commit" })
                     .text_size(12.0)
                     .weight(xilem::FontWeight::MEDIUM)
                     .color(if can_commit {

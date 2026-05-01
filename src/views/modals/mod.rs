@@ -21,11 +21,12 @@ pub mod tag;
 
 use crate::app::{AppState, Modal};
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use vello::peniko::Color;
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::{Padding, Style as _};
-use xilem::view::{flex, label, sized_box, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer};
+use xilem::view::{flex, sized_box, Axis, CrossAxisAlignment, FlexExt as _, FlexSpacer};
 use xilem::WidgetView as _;
 
 /// Top-level modal dispatch. Returns `None` when no modal is open.
@@ -70,9 +71,7 @@ fn disabled_view(
         (
             FlexSpacer::Flex(1.0),
             flat_button(
-                xilem::view::label("Close")
-                    .text_size(12.0)
-                    .color(theme.text),
+                crate::ui::label("Close").text_size(12.0).color(theme.text),
                 FlatStyle {
                     idle_bg: None,
                     hover_bg: theme.bg_hover,
@@ -217,7 +216,7 @@ where
     use crate::widgets::flat_button::{flat_button, FlatStyle};
     let owned = name.to_string();
     flat_button(
-        xilem::view::label(name.to_string())
+        crate::ui::label(name.to_string())
             .text_size(11.0)
             .weight(if selected {
                 xilem::FontWeight::MEDIUM
@@ -285,9 +284,7 @@ where
         (
             FlexSpacer::Flex(1.0),
             flat_button(
-                xilem::view::label("Cancel")
-                    .text_size(12.0)
-                    .color(theme.text),
+                crate::ui::label("Cancel").text_size(12.0).color(theme.text),
                 FlatStyle {
                     idle_bg: None,
                     hover_bg: theme.bg_hover,
@@ -300,7 +297,7 @@ where
                 |s: &mut AppState| s.modal = None,
             ),
             flat_button(
-                xilem::view::label(ok_label)
+                crate::ui::label(ok_label)
                     .text_size(12.0)
                     .weight(xilem::FontWeight::MEDIUM)
                     .color(theme.accent_fg),

@@ -3,10 +3,11 @@
 use crate::app::{AppState, CherryPickModalState, Modal, Toast};
 use crate::git;
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::{Padding, Style as _};
-use xilem::view::{flex, label, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
+use xilem::view::{flex, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -66,7 +67,7 @@ fn body_view(s: &CherryPickModalState, theme: &Theme) -> impl xilem::WidgetView<
         "stage only (no commit)"
     };
     let no_commit_btn = flat_button(
-        xilem::view::label(no_commit_label)
+        crate::ui::label(no_commit_label)
             .text_size(11.0)
             .color(if s.no_commit {
                 theme.accent

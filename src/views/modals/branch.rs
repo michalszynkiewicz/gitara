@@ -4,10 +4,11 @@
 use crate::app::{AppState, BranchModalState, Modal};
 use crate::git;
 use crate::theme::Theme;
+use crate::ui::label;
 use crate::widgets::flat_button::{flat_button, FlatStyle};
 use xilem::masonry::properties::types::AsUnit as _;
 use xilem::style::{Padding, Style as _};
-use xilem::view::{flex, label, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
+use xilem::view::{flex, sized_box, text_input, Axis, CrossAxisAlignment, FlexSpacer};
 use xilem::WidgetView as _;
 
 pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
@@ -58,7 +59,7 @@ fn body_view(s: &BranchModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
         "check out after creating"
     };
     let checkout_btn = flat_button(
-        xilem::view::label(checkout_label)
+        crate::ui::label(checkout_label)
             .text_size(11.0)
             .color(if s.checkout {
                 theme.accent

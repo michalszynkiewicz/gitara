@@ -16,6 +16,7 @@ mod mock;
 mod model;
 mod persist;
 mod theme;
+mod ui;
 mod views;
 mod widgets;
 
@@ -117,6 +118,9 @@ fn main() -> anyhow::Result<()> {
     }
 
     let result = xilem::Xilem::new_simple(state, app::root_view, window_options)
+        .with_font(fonts::INTER_REGULAR.to_vec())
+        .with_font(fonts::INTER_MEDIUM.to_vec())
+        .with_font(fonts::JETBRAINS_MONO_REGULAR.to_vec())
         .run_in(xilem::EventLoop::with_user_event());
 
     // Bypass static destructors and atexit handlers. wgpu/vello/winit on
