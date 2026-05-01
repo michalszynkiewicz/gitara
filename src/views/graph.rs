@@ -71,13 +71,9 @@ pub fn view(state: &mut AppState) -> impl xilem::WidgetView<AppState> {
 /// Pill that toggles per-row subject wrapping. Off = clip at column;
 /// on = wrap, row grows vertically.
 fn wrap_toggle(theme: &Theme, on: bool) -> impl xilem::WidgetView<AppState> {
-    let label_text = if on { "✓ wrap" } else { "wrap" };
+    let color = if on { theme.accent } else { theme.text_muted };
     flat_button(
-        crate::ui::label(label_text).text_size(11.0).color(if on {
-            theme.accent
-        } else {
-            theme.text_muted
-        }),
+        crate::ui::toggle_row(on, "wrap", color, 11.0),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -95,17 +91,9 @@ fn wrap_toggle(theme: &Theme, on: bool) -> impl xilem::WidgetView<AppState> {
 
 /// Pill that toggles show-all-branches (gitk --all). Reloads commits on flip.
 fn all_refs_toggle(theme: &Theme, on: bool) -> impl xilem::WidgetView<AppState> {
-    let label_text = if on {
-        "✓ all branches"
-    } else {
-        "all branches"
-    };
+    let color = if on { theme.accent } else { theme.text_muted };
     flat_button(
-        crate::ui::label(label_text).text_size(11.0).color(if on {
-            theme.accent
-        } else {
-            theme.text_muted
-        }),
+        crate::ui::toggle_row(on, "all branches", color, 11.0),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
@@ -198,10 +186,17 @@ fn working_tree_row(
             (
                 gutter,
                 sized_box(
-                    label("●  working tree")
-                        .text_size(12.0)
-                        .weight(xilem::FontWeight::MEDIUM)
-                        .color(theme.warn),
+                    flex(
+                        Axis::Horizontal,
+                        (
+                            crate::ui::icon("dot").text_size(12.0).color(theme.warn),
+                            label("working tree")
+                                .text_size(12.0)
+                                .weight(xilem::FontWeight::MEDIUM)
+                                .color(theme.warn),
+                        ),
+                    )
+                    .gap((4.0_f64).px()),
                 )
                 .width((160.0_f64).px()),
                 label(summary).text_size(12.0).color(theme.text),

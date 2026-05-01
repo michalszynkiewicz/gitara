@@ -43,19 +43,13 @@ fn body_view(
             .collect()
     };
 
-    let prune_label = if s.prune {
-        "✓ prune deleted remote refs"
+    let prune_color = if s.prune {
+        theme.accent
     } else {
-        "prune deleted remote refs"
+        theme.text_muted
     };
     let prune_btn = flat_button(
-        crate::ui::label(prune_label)
-            .text_size(11.0)
-            .color(if s.prune {
-                theme.accent
-            } else {
-                theme.text_muted
-            }),
+        crate::ui::toggle_row(s.prune, "prune deleted remote refs", prune_color, 11.0),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,

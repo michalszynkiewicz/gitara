@@ -53,19 +53,13 @@ fn body_view(s: &BranchModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
     .padding(Padding::from_vh(4.0, 8.0));
 
     // Checkout toggle — a small pill button that reflects current state.
-    let checkout_label = if s.checkout {
-        "✓ check out after creating"
+    let checkout_color = if s.checkout {
+        theme.accent
     } else {
-        "check out after creating"
+        theme.text_muted
     };
     let checkout_btn = flat_button(
-        crate::ui::label(checkout_label)
-            .text_size(11.0)
-            .color(if s.checkout {
-                theme.accent
-            } else {
-                theme.text_muted
-            }),
+        crate::ui::toggle_row(s.checkout, "check out after creating", checkout_color, 11.0),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,

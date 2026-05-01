@@ -27,12 +27,9 @@ pub fn render_hunks(
     hunks: Vec<(PathBuf, Hunk)>,
     theme: &Theme,
 ) -> impl xilem::WidgetView<AppState> {
-    // Embedded JetBrains Mono — registered at startup in main.rs and named
-    // explicitly here so we don't fall back to the host's monospace.
-    let mono: masonry::parley::FontStack<'static> =
-        masonry::parley::FontStack::Source(std::borrow::Cow::Borrowed(
-            "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace",
-        ));
+    let mono: masonry::parley::FontStack<'static> = masonry::parley::FontStack::Source(
+        std::borrow::Cow::Borrowed("ui-monospace, SFMono-Regular, Menlo, monospace"),
+    );
 
     let mut rows: Vec<Box<xilem::AnyWidgetView<AppState>>> = Vec::new();
     let mut current_path: Option<PathBuf> = None;

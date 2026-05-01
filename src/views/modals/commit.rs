@@ -69,19 +69,13 @@ fn body_view(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
     .border(theme.border, 1.0)
     .padding(Padding::from_vh(4.0, 8.0));
 
-    let amend_label = if s.amend {
-        "✓ amend last commit"
+    let amend_color = if s.amend {
+        theme.warn
     } else {
-        "amend last commit"
+        theme.text_muted
     };
     let amend_btn = flat_button(
-        crate::ui::label(amend_label)
-            .text_size(11.0)
-            .color(if s.amend {
-                theme.warn
-            } else {
-                theme.text_muted
-            }),
+        crate::ui::toggle_row(s.amend, "amend last commit", amend_color, 11.0),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,

@@ -148,9 +148,9 @@ fn details(state: &AppState) -> impl xilem::WidgetView<AppState> {
     };
 
     let (sig_text, sig_color) = if c.signed {
-        ("✓ signed", theme.added)
+        ("yes", theme.added)
     } else {
-        ("not signed", theme.text_muted)
+        ("no", theme.text_muted)
     };
 
     sized_box(

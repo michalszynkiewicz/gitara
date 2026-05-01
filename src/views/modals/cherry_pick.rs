@@ -61,19 +61,13 @@ fn body_view(s: &CherryPickModalState, theme: &Theme) -> impl xilem::WidgetView<
     .border(theme.border, 1.0)
     .padding(Padding::from_vh(4.0, 8.0));
 
-    let no_commit_label = if s.no_commit {
-        "✓ stage only (no commit)"
+    let no_commit_color = if s.no_commit {
+        theme.accent
     } else {
-        "stage only (no commit)"
+        theme.text_muted
     };
     let no_commit_btn = flat_button(
-        crate::ui::label(no_commit_label)
-            .text_size(11.0)
-            .color(if s.no_commit {
-                theme.accent
-            } else {
-                theme.text_muted
-            }),
+        crate::ui::toggle_row(s.no_commit, "stage only (no commit)", no_commit_color, 11.0),
         FlatStyle {
             idle_bg: None,
             hover_bg: theme.bg_hover,
