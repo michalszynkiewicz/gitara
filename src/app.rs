@@ -124,6 +124,9 @@ pub struct CommitModalState {
     /// Last click on a file row — used to detect a double-click for the
     /// stage/unstage shortcut. Resets on any non-row interaction.
     pub last_click: Option<(std::path::PathBuf, std::time::Instant)>,
+    /// Set when a background read (diff, status) fails. The lists keep
+    /// their last-known-good contents; this surfaces the failure.
+    pub read_error: Option<String>,
 }
 
 impl CommitModalState {
@@ -162,9 +165,24 @@ impl CommitModalState {
     /// Re-read both file lists. Keeps the existing selection if the file
     /// still exists on its side; otherwise tries the other side; otherwise
     /// clears.
+    ///
+    /// On read failure the existing lists are **preserved** (so the UI
+    /// never silently shows "no changes") and `read_error` is set.
     pub fn reload_lists(&mut self, repo_path: &std::path::Path) {
-        self.unstaged = crate::git::diff::unstaged_files(repo_path).unwrap_or_default();
-        self.staged = crate::git::diff::staged_files(repo_path).unwrap_or_default();
+        match (
+            crate::git::diff::unstaged_files(repo_path),
+            crate::git::diff::staged_files(repo_path),
+        ) {
+            (Ok(unstaged), Ok(staged)) => {
+                self.unstaged = unstaged;
+                self.staged = staged;
+                self.read_error = None;
+            }
+            (Err(e), _) | (_, Err(e)) => {
+                self.read_error = Some(format!("failed to read working tree: {e:#}"));
+                return;
+            }
+        }
 
         if let Some(p) = &self.selected_path {
             let on_staged = self.staged.iter().any(|f| &f.path == p);
@@ -190,14 +208,29 @@ impl CommitModalState {
     }
 
     /// Re-read the hunks for the currently-selected file.
+    ///
+    /// On read failure the existing hunks are preserved and `read_error`
+    /// is set.
     pub fn reload_hunks(&mut self, repo_path: &std::path::Path) {
-        self.hunks = match &self.selected_path {
+        let result = match &self.selected_path {
             Some(p) if self.selected_staged => {
-                crate::git::diff::hunks_staged_for_path(repo_path, p).unwrap_or_default()
+                crate::git::diff::hunks_staged_for_path(repo_path, p)
             }
-            Some(p) => crate::git::diff::hunks_unstaged_for_path(repo_path, p).unwrap_or_default(),
-            None => Vec::new(),
+            Some(p) => crate::git::diff::hunks_unstaged_for_path(repo_path, p),
+            None => {
+                self.hunks = Vec::new();
+                return;
+            }
         };
+        match result {
+            Ok(hunks) => {
+                self.hunks = hunks;
+                self.read_error = None;
+            }
+            Err(e) => {
+                self.read_error = Some(format!("failed to read diff: {e:#}"));
+            }
+        }
     }
 
     /// Re-read both lists *and* hunks. Call after stage/unstage.
@@ -528,7 +561,10 @@ impl AppState {
             self.working_status = None;
             return;
         }
-        self.working_status = crate::git::status::read(&self.repo.path).ok();
+        match crate::git::status::read(&self.repo.path) {
+            Ok(s) => self.working_status = Some(s),
+            Err(_) => {} // preserve last-known-good; caller surfaces via toast
+        }
     }
 
     /// Reload the commit log honouring the current `show_all_refs` flag.
@@ -554,7 +590,12 @@ impl AppState {
             self.repo = repo;
         }
         self.reload_commits();
-        self.reflog = crate::git::refs::reflog(&self.repo.path).unwrap_or_default();
+        match crate::git::refs::reflog(&self.repo.path) {
+            Ok(rl) => self.reflog = rl,
+            Err(e) => {
+                self.toast = Some(Toast::error(format!("failed to read reflog: {e:#}")));
+            }
+        }
         self.reload_working_status();
     }
 

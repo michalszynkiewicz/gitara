@@ -93,8 +93,9 @@ fn body_view(s: &CommitModalState, theme: &Theme) -> impl xilem::WidgetView<AppS
         },
     );
 
-    let error_view: Box<xilem::AnyWidgetView<AppState>> = match &s.error {
-        Some(err) => label(err.clone())
+    let error_msg = s.error.as_deref().or(s.read_error.as_deref());
+    let error_view: Box<xilem::AnyWidgetView<AppState>> = match error_msg {
+        Some(err) => label(err.to_owned())
             .text_size(11.0)
             .color(theme.removed)
             .boxed(),
