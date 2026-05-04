@@ -20,6 +20,21 @@
 //! window's app_id was set before the .desktop file existed; some
 //! compositors re-scan on demand, others on next session).
 
+/// Escape and quote an executable path for the Desktop Entry `Exec=` key.
+///
+/// Returns `None` if the path contains control characters that the spec
+/// cannot represent (e.g. newlines, NUL). Falls back to `"gitara"` at
+/// the call site.
+fn exec_quote(path: &str) -> Option<String> {
+    if path.bytes().any(|b| b < 0x20 || b == 0x7f) {
+        return None;
+    }
+    // Escape backslash and double-quote per the Desktop Entry spec, then
+    // wrap the whole path in double-quotes so spaces parse correctly.
+    let escaped = path.replace('\\', "\\\\").replace('"', "\\\"");
+    Some(format!("\"{escaped}\""))
+}
+
 #[cfg(target_os = "linux")]
 pub fn ensure_installed() -> std::io::Result<()> {
     use std::fs;
@@ -60,7 +75,7 @@ pub fn ensure_installed() -> std::io::Result<()> {
         fs::create_dir_all(&apps_dir)?;
         let exe = std::env::current_exe()
             .ok()
-            .and_then(|p| p.to_str().map(|s| s.to_string()))
+            .and_then(|p| p.to_str().and_then(|s| exec_quote(s)))
             .unwrap_or_else(|| "gitara".to_string());
         // StartupWMClass MUST match the app_id set via
         // winit::WindowAttributesExtWayland::with_name (general arg).
@@ -106,4 +121,38 @@ pub fn ensure_installed() -> std::io::Result<()> {
 #[cfg(not(target_os = "linux"))]
 pub fn ensure_installed() -> std::io::Result<()> {
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::exec_quote;
+
+    #[test]
+    fn plain_path_is_quoted() {
+        assert_eq!(exec_quote("/usr/bin/gitara").unwrap(), "\"/usr/bin/gitara\"");
+    }
+
+    #[test]
+    fn path_with_spaces_is_quoted() {
+        assert_eq!(
+            exec_quote("/home/user/my apps/gitara").unwrap(),
+            "\"/home/user/my apps/gitara\""
+        );
+    }
+
+    #[test]
+    fn backslash_is_escaped() {
+        assert_eq!(exec_quote("C:\\gitara").unwrap(), "\"C:\\\\gitara\"");
+    }
+
+    #[test]
+    fn double_quote_is_escaped() {
+        assert_eq!(exec_quote("/path/\"bad\"/gitara").unwrap(), "\"/path/\\\"bad\\\"/gitara\"");
+    }
+
+    #[test]
+    fn control_chars_return_none() {
+        assert!(exec_quote("/path/with\nnewline").is_none());
+        assert!(exec_quote("/path/with\x00nul").is_none());
+    }
 }
