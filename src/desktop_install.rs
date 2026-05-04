@@ -129,7 +129,10 @@ mod tests {
 
     #[test]
     fn plain_path_is_quoted() {
-        assert_eq!(exec_quote("/usr/bin/gitara").unwrap(), "\"/usr/bin/gitara\"");
+        assert_eq!(
+            exec_quote("/usr/bin/gitara").unwrap(),
+            "\"/usr/bin/gitara\""
+        );
     }
 
     #[test]
@@ -147,7 +150,10 @@ mod tests {
 
     #[test]
     fn double_quote_is_escaped() {
-        assert_eq!(exec_quote("/path/\"bad\"/gitara").unwrap(), "\"/path/\\\"bad\\\"/gitara\"");
+        assert_eq!(
+            exec_quote("/path/\"bad\"/gitara").unwrap(),
+            "\"/path/\\\"bad\\\"/gitara\""
+        );
     }
 
     #[test]

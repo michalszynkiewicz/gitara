@@ -514,11 +514,15 @@ mod tests {
         let index = g.index().unwrap();
         // Only the literally-named file must be staged.
         assert!(
-            index.get_path(std::path::Path::new(":(glob)*"), 0).is_some(),
+            index
+                .get_path(std::path::Path::new(":(glob)*"), 0)
+                .is_some(),
             "magic-named file not staged"
         );
         assert!(
-            index.get_path(std::path::Path::new("other.txt"), 0).is_none(),
+            index
+                .get_path(std::path::Path::new("other.txt"), 0)
+                .is_none(),
             "other.txt was unexpectedly staged via pathspec expansion"
         );
     }
@@ -544,7 +548,9 @@ mod tests {
             ":(top)* not staged"
         );
         assert!(
-            index.get_path(std::path::Path::new("bystander.txt"), 0).is_none(),
+            index
+                .get_path(std::path::Path::new("bystander.txt"), 0)
+                .is_none(),
             "bystander.txt was unexpectedly staged"
         );
     }

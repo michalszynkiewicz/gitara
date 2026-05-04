@@ -191,7 +191,12 @@ fn tags(repo_path: &Path) -> anyhow::Result<Vec<Tag>> {
             (false, git2_time_to_offsetdt(commit.committer().when()))
         };
 
-        out.push(Tag { name: name.to_string(), oid, annotated, date });
+        out.push(Tag {
+            name: name.to_string(),
+            oid,
+            annotated,
+            date,
+        });
     }
     Ok(out)
 }
