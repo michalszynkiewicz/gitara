@@ -173,10 +173,10 @@ fn linux_has_vulkan() -> bool {
 #[cfg(unix)]
 fn install_segv_handler() {
     extern "C" fn handler(_sig: libc::c_int, _info: *mut libc::siginfo_t, _ctx: *mut libc::c_void) {
-        const MSG: &[u8] = b"gitara: SIGSEGV during shutdown - exiting cleanly (set GITARA_DEBUG_CRASHES=1 for a coredump)\n";
+        const MSG: &[u8] = b"gitara: SIGSEGV caught - exiting with error (set GITARA_DEBUG_CRASHES=1 for a coredump)\n";
         unsafe {
             libc::write(2, MSG.as_ptr() as *const _, MSG.len());
-            libc::_exit(0);
+            libc::_exit(1);
         }
     }
     unsafe {
