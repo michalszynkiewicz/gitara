@@ -33,7 +33,7 @@ pub fn load_repo(path: &Path) -> anyhow::Result<RepoView> {
     let head = head_state(&repo)?;
     let branches = local_branches(&repo)?;
     let remotes = remotes(&repo)?;
-    let tags = tags(&repo)?;
+    let tags = tags(&repo_path)?;
     // gix doesn't expose stashes; git2 does, via stash_foreach.
     let stashes = load_stashes(&repo_path).unwrap_or_else(|e| {
         tracing::warn!("load_stashes failed: {e:#}");
@@ -152,29 +152,56 @@ fn remotes(repo: &gix::Repository) -> anyhow::Result<Vec<Remote>> {
     Ok(out)
 }
 
-fn tags(repo: &gix::Repository) -> anyhow::Result<Vec<Tag>> {
-    let platform = repo.references()?;
+fn tags(repo_path: &Path) -> anyhow::Result<Vec<Tag>> {
+    let repo = git2::Repository::open(repo_path)
+        .with_context(|| format!("open {} for tags", repo_path.display()))?;
+    let names = repo.tag_names(None).context("list tags")?;
     let mut out = Vec::new();
-    for r in platform.tags()? {
-        let mut r = match r {
+
+    for name in names.iter().flatten() {
+        let refname = format!("refs/tags/{name}");
+        let r = match repo.find_reference(&refname) {
             Ok(r) => r,
             Err(_) => continue,
         };
-        let name = r.name().shorten().to_string();
-        let oid = match r.peel_to_id() {
-            Ok(id) => id.to_string(),
+        // Peel all the way to a commit to get the target oid shown in the graph.
+        let commit = match r.peel(git2::ObjectType::Commit) {
+            Ok(obj) => match obj.into_commit() {
+                Ok(c) => c,
+                Err(_) => continue,
+            },
             Err(_) => continue,
         };
-        // Annotated-vs-lightweight and tag date: need to peel and inspect the tag object.
-        // Keep it simple for first pass — mark as annotated=false, use now for date.
-        out.push(Tag {
-            name,
-            oid,
-            annotated: false,
-            date: OffsetDateTime::now_utc(),
-        });
+        let oid = commit.id().to_string();
+
+        // If the raw reference target differs from the commit id, the ref
+        // points at a tag object → annotated.
+        let raw_oid = match r.target() {
+            Some(id) => id,
+            None => continue,
+        };
+        let (annotated, date) = if raw_oid != commit.id() {
+            let date = repo
+                .find_tag(raw_oid)
+                .ok()
+                .and_then(|t| t.tagger().map(|s| git2_time_to_offsetdt(s.when())))
+                .unwrap_or_else(|| git2_time_to_offsetdt(commit.committer().when()));
+            (true, date)
+        } else {
+            (false, git2_time_to_offsetdt(commit.committer().when()))
+        };
+
+        out.push(Tag { name: name.to_string(), oid, annotated, date });
     }
     Ok(out)
+}
+
+fn git2_time_to_offsetdt(t: git2::Time) -> OffsetDateTime {
+    let offset = time::UtcOffset::from_whole_seconds(t.offset_minutes() * 60)
+        .unwrap_or(time::UtcOffset::UTC);
+    OffsetDateTime::from_unix_timestamp(t.seconds())
+        .unwrap_or_else(|_| OffsetDateTime::now_utc())
+        .to_offset(offset)
 }
 
 /// Walk the stash list for the given repo via git2's stash_foreach
@@ -296,6 +323,33 @@ mod tests {
         assert_eq!(stashes.len(), 1);
         assert_eq!(stashes[0].idx, 0);
         assert!(stashes[0].message.contains("test stash entry"));
+    }
+
+    #[test]
+    fn lightweight_tag_is_not_annotated_and_has_commit_date() {
+        let repo = fixture("tag_meta_lightweight");
+        seed_commits(&repo, &["a"]);
+        crate::git::ops::create_tag(&repo, "v1.0", None, "").unwrap();
+
+        let result = tags(&repo).unwrap();
+        let tag = result.iter().find(|t| t.name == "v1.0").unwrap();
+        assert!(!tag.annotated, "lightweight tag should not be annotated");
+        // Date should be within a few seconds of now (it's the commit date).
+        let delta = (OffsetDateTime::now_utc() - tag.date).whole_seconds().abs();
+        assert!(delta < 30, "tag date too far from now: {delta}s");
+    }
+
+    #[test]
+    fn annotated_tag_is_marked_annotated_and_has_tagger_date() {
+        let repo = fixture("tag_meta_annotated");
+        seed_commits(&repo, &["a"]);
+        crate::git::ops::create_tag(&repo, "v2.0", None, "release notes").unwrap();
+
+        let result = tags(&repo).unwrap();
+        let tag = result.iter().find(|t| t.name == "v2.0").unwrap();
+        assert!(tag.annotated, "annotated tag should be marked annotated");
+        let delta = (OffsetDateTime::now_utc() - tag.date).whole_seconds().abs();
+        assert!(delta < 30, "tag date too far from now: {delta}s");
     }
 
     #[test]
