@@ -561,9 +561,9 @@ impl AppState {
             self.working_status = None;
             return;
         }
-        match crate::git::status::read(&self.repo.path) {
-            Ok(s) => self.working_status = Some(s),
-            Err(_) => {} // preserve last-known-good; caller surfaces via toast
+        // On error preserve last-known-good; caller surfaces via toast.
+        if let Ok(s) = crate::git::status::read(&self.repo.path) {
+            self.working_status = Some(s);
         }
     }
 

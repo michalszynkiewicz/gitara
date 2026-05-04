@@ -75,7 +75,7 @@ pub fn ensure_installed() -> std::io::Result<()> {
         fs::create_dir_all(&apps_dir)?;
         let exe = std::env::current_exe()
             .ok()
-            .and_then(|p| p.to_str().and_then(|s| exec_quote(s)))
+            .and_then(|p| p.to_str().and_then(exec_quote))
             .unwrap_or_else(|| "gitara".to_string());
         // StartupWMClass MUST match the app_id set via
         // winit::WindowAttributesExtWayland::with_name (general arg).
