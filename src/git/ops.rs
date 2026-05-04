@@ -25,15 +25,36 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
+    run_git(repo_path, args, false)
+}
+
+/// Like `git` but sets `GIT_LITERAL_PATHSPECS=1` so that filenames with
+/// pathspec magic (e.g. `:(glob)*`) are never expanded by git.
+fn git_literal_pathspecs<I, S>(repo_path: &Path, args: I) -> anyhow::Result<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    run_git(repo_path, args, true)
+}
+
+fn run_git<I, S>(repo_path: &Path, args: I, literal_pathspecs: bool) -> anyhow::Result<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
     let args: Vec<_> = args.into_iter().collect();
     let argv: Vec<String> = args
         .iter()
         .map(|s| s.as_ref().to_string_lossy().into_owned())
         .collect();
 
-    let output: Output = Command::new("git")
-        .current_dir(repo_path)
-        .args(&args)
+    let mut cmd = Command::new("git");
+    cmd.current_dir(repo_path).args(&args);
+    if literal_pathspecs {
+        cmd.env("GIT_LITERAL_PATHSPECS", "1");
+    }
+    let output: Output = cmd
         .output()
         .with_context(|| format!("spawn `git {}` in {}", argv.join(" "), repo_path.display()))?;
 
@@ -180,7 +201,7 @@ pub fn stage(repo_path: &Path, paths: &[&Path]) -> anyhow::Result<()> {
     }
     let mut args: Vec<&OsStr> = vec![OsStr::new("add"), OsStr::new("--")];
     args.extend(paths.iter().map(|p| p.as_os_str()));
-    git(repo_path, &args)?;
+    git_literal_pathspecs(repo_path, &args)?;
     Ok(())
 }
 
@@ -192,7 +213,7 @@ pub fn unstage(repo_path: &Path, paths: &[&Path]) -> anyhow::Result<()> {
     }
     let mut args: Vec<&OsStr> = vec![OsStr::new("reset"), OsStr::new("HEAD"), OsStr::new("--")];
     args.extend(paths.iter().map(|p| p.as_os_str()));
-    git(repo_path, &args)?;
+    git_literal_pathspecs(repo_path, &args)?;
     Ok(())
 }
 
@@ -205,7 +226,7 @@ pub fn discard(repo_path: &Path, paths: &[&Path]) -> anyhow::Result<()> {
     }
     let mut args: Vec<&OsStr> = vec![OsStr::new("checkout"), OsStr::new("--")];
     args.extend(paths.iter().map(|p| p.as_os_str()));
-    git(repo_path, &args)?;
+    git_literal_pathspecs(repo_path, &args)?;
     Ok(())
 }
 
@@ -471,6 +492,61 @@ mod tests {
         seed_commits(&repo, &["a"]);
         let err = commit(&repo, "   ", false).unwrap_err();
         assert!(format!("{err:#}").contains("empty"));
+    }
+
+    /// Regression: a filename that looks like a pathspec magic word (e.g.
+    /// `:(glob)*`) must only stage that exact file, not expand as a glob.
+    #[test]
+    fn stage_pathspec_magic_filename_is_literal() {
+        use std::fs;
+        let repo = fixture("stage_pathspec_magic");
+        seed_commits(&repo, &["base"]);
+
+        // Create two files: one with a pathspec-magic name and one bystander.
+        let magic = repo.join(":(glob)*");
+        let other = repo.join("other.txt");
+        fs::write(&magic, "magic").unwrap();
+        fs::write(&other, "other").unwrap();
+
+        stage(&repo, &[Path::new(":(glob)*")]).unwrap();
+
+        let g = git2::Repository::open(&repo).unwrap();
+        let index = g.index().unwrap();
+        // Only the literally-named file must be staged.
+        assert!(
+            index.get_path(std::path::Path::new(":(glob)*"), 0).is_some(),
+            "magic-named file not staged"
+        );
+        assert!(
+            index.get_path(std::path::Path::new("other.txt"), 0).is_none(),
+            "other.txt was unexpectedly staged via pathspec expansion"
+        );
+    }
+
+    /// Regression: `:(top)*` must also be treated as a literal filename.
+    #[test]
+    fn stage_top_pathspec_magic_is_literal() {
+        use std::fs;
+        let repo = fixture("stage_top_pathspec_magic");
+        seed_commits(&repo, &["base"]);
+
+        let magic = repo.join(":(top)*");
+        let other = repo.join("bystander.txt");
+        fs::write(&magic, "top").unwrap();
+        fs::write(&other, "bystander").unwrap();
+
+        stage(&repo, &[Path::new(":(top)*")]).unwrap();
+
+        let g = git2::Repository::open(&repo).unwrap();
+        let index = g.index().unwrap();
+        assert!(
+            index.get_path(std::path::Path::new(":(top)*"), 0).is_some(),
+            ":(top)* not staged"
+        );
+        assert!(
+            index.get_path(std::path::Path::new("bystander.txt"), 0).is_none(),
+            "bystander.txt was unexpectedly staged"
+        );
     }
 
     #[test]
