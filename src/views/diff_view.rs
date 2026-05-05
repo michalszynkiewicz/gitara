@@ -58,8 +58,11 @@ pub fn render_hunks(
                 O::Removed => ("−", theme.removed),
                 O::Context => (" ", theme.text),
             };
+            // Expand tabs to spaces — parley doesn't render \t as whitespace
+            // and the text engine shows it as a replacement-character box.
+            let content = line.content.replace('\t', "    ");
             rows.push(
-                label(format!("{prefix} {}", line.content))
+                label(format!("{prefix} {content}"))
                     .text_size(11.0)
                     .font(mono.clone())
                     .color(color)
